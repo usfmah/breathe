@@ -12,6 +12,8 @@ interface ButtonProps {
   disabled?: boolean;
   className?: string;
   title?: string;
+  /** Overrides the accessible name, e.g. "Pause reminders" for a "Pause" label. */
+  ariaLabel?: string;
 }
 
 export function PrimaryButton({
@@ -20,6 +22,7 @@ export function PrimaryButton({
   disabled,
   className,
   title,
+  ariaLabel,
 }: ButtonProps) {
   return (
     <button
@@ -27,6 +30,7 @@ export function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={ariaLabel}
       className={cn(
         "flex h-11 w-full items-center justify-center gap-2.5 rounded-[14px]",
         "bg-accent text-[14px] font-medium text-accent-fg",
@@ -274,7 +278,7 @@ export function Note({
       className={cn(
         "flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-[12.5px] leading-relaxed",
         tone === "neutral" && "border-line bg-surface-muted text-muted",
-        tone === "warning" && "border-danger/35 bg-danger/8 text-danger",
+        tone === "warning" && "border-danger/35 bg-danger/10 text-danger",
         tone === "success" && "border-accent/35 bg-accent-soft text-accent-soft-fg",
       )}
     >

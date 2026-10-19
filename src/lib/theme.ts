@@ -19,6 +19,20 @@ export function systemPrefersDark(): boolean {
 }
 
 /**
+ * Subscribes to the OS colour-scheme preference. Returns a no-op unsubscribe on
+ * environments without `matchMedia` (such as the test runner).
+ */
+export function watchSystemTheme(
+  onChange: (dark: boolean) => void,
+): () => void {
+  if (typeof window === "undefined" || !window.matchMedia) return () => undefined;
+  const query = window.matchMedia("(prefers-color-scheme: dark)");
+  const handler = (event: MediaQueryListEvent) => onChange(event.matches);
+  query.addEventListener("change", handler);
+  return () => query.removeEventListener("change", handler);
+}
+
+/**
  * Applies the resolved theme to the document and mirrors the *preference* into
  * localStorage so `index.html` can paint the right background before React
  * boots. The authoritative copy still lives in the Rust settings store.

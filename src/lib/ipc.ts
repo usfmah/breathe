@@ -128,8 +128,12 @@ export async function getSettings(): Promise<Settings> {
 
 export async function saveSettings(patch: SettingsPatch): Promise<Settings> {
   if (!isTauri()) {
+    const intervalChanged =
+      patch.intervalMinutes !== undefined &&
+      patch.intervalMinutes !== mockSettings.intervalMinutes;
     mockSettings = { ...mockSettings, ...patch };
     mockSnapshot.intervalMinutes = mockSettings.intervalMinutes;
+    if (intervalChanged) mockEngine.resetTo(mockSettings.intervalMinutes);
     return { ...mockSettings };
   }
   return invoke<Settings>("save_settings", { patch });
@@ -162,15 +166,6 @@ export async function snoozeReminders(): Promise<Snapshot> {
     return { ...mockSnapshot };
   }
   return invoke<Snapshot>("snooze_reminders", { minutes: 5 });
-}
-
-export async function setIntervalMinutes(minutes: number): Promise<Snapshot> {
-  if (!isTauri()) {
-    mockSnapshot.intervalMinutes = minutes;
-    mockEngine.resetTo(minutes);
-    return { ...mockSnapshot };
-  }
-  return invoke<Snapshot>("set_interval", { minutes });
 }
 
 export async function sendTestNotification(
