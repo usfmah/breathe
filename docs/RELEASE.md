@@ -120,8 +120,10 @@ recreate the tag, but prefer a new patch version to avoid ambiguity.
    the GitHub Release, removes any unexpected stale release assets, and uploads
    exactly the six expected files.
 
-This workflow has not run yet. The numbered behavior above describes configured
-behavior, not a completed release.
+The v0.1.0 workflow completed successfully on 2026-10-19 UTC. It published all
+six expected assets. The live site detected v0.1.0 and the published asset URLs
+returned HTTP 200. See the [release](https://github.com/usfmah/breathe/releases/tag/v0.1.0)
+and [workflow run](https://github.com/usfmah/breathe/actions/runs/39341987369).
 
 The publish job requests `contents: write`; every other job has read-only
 permissions. The workflow uses `GITHUB_TOKEN`, not a personal access token. No
@@ -202,15 +204,16 @@ gh run rerun <run-id> --failed
 If the failure requires a code change, make the change on `main`, bump the
 version, and create a new tag. Do not reuse a tag whose source has changed.
 
-## Manual validation checklist
+## Release and manual validation checklist
 
-Automation does not replace a desktop:
+The first items were verified for v0.1.0. Automation does not replace a desktop:
 
-- [ ] `CI` is green on the release commit.
-- [ ] `npm run check:version` passes.
-- [ ] The `Pages` workflow is green and `https://usfmah.github.io/breathe/` serves the site over HTTPS.
-- [ ] The release workflow is green end to end.
-- [ ] Download every asset and confirm the filenames above.
+- [x] `CI` is green on the release commit.
+- [x] `npm run check:version v0.1.0` passes.
+- [x] The `Pages` workflow is green and `https://usfmah.github.io/breathe/` serves the site over HTTPS.
+- [x] The release workflow is green end to end.
+- [x] The release workflow installed and launched Linux packages in its Fedora, Ubuntu and Debian containers, and passed the Windows Server installer/uninstaller smoke test.
+- [x] All six assets are published with the filenames above; their public URLs return HTTP 200.
 - [ ] Install the RPM on Fedora 44 and launch it.
 - [ ] Install the DEB on Ubuntu 24.04 and Debian 12 and launch it.
 - [ ] Run the AppImage on Ubuntu 24.04 and Fedora 44.
@@ -219,8 +222,8 @@ Automation does not replace a desktop:
       autostart, DPI, uninstall).
 - [ ] Run `makepkg -si` on Arch and launch the package.
 - [ ] Submit the AUR files and confirm the AUR package builds.
-- [ ] Load the landing page after publication and confirm it detects the release,
-      shows the exact version/date, and links the six published assets.
+- [x] The landing page detects v0.1.0 and enables the verified platform download.
+- [ ] Check each platform selector in a browser and confirm it links the matching asset.
 - [ ] Confirm a missing-asset/API-failure fallback still points to GitHub Releases
       rather than an unverified file.
 

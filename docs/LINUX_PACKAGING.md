@@ -21,9 +21,9 @@ and DEB are the recommended packages; the AppImage is a convenience artifact.
 | DEB install and launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed locally during packaging work; not a CI or release run |
 | DEB install and launch (Fedora 44 build) | Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed on Ubuntu 24.04; fails on Debian 12 with a `GLIBC_2.39` symbol error, as expected for a newer build host |
 | AppImage launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Fedora 44 containers under Xvfb | Passed locally during packaging work; not a CI or release run |
-| RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Configured; not run yet (tag-only) |
-| DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Configured; not run yet (tag-only) |
-| AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Configured; not run yet (tag-only) |
+| RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Passed for v0.1.0 on 2026-10-19 UTC |
+| DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Passed for v0.1.0 on 2026-10-19 UTC |
+| AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Passed for v0.1.0 on 2026-10-19 UTC |
 | AUR metadata (`makepkg --printsrcinfo`) | GitHub Actions CI, `archlinux:base-devel` container | Passed on 2026-10-19 |
 | AUR full build/install (`makepkg -si`) | Arch Linux | **Not yet performed here** |
 | Fedora Workstation GNOME / KDE | Real desktop | Not individually re-verified for this release |
@@ -199,10 +199,10 @@ Debian 12/13. The package was installed successfully on Ubuntu 24.04 and Debian
 12 during this work.
 
 The **local Fedora-built** DEB carries a glibc 2.39 symbol requirement: it
-launched on Ubuntu 24.04 but not on Debian 12 (glibc 2.36). The release DEB is
-built on Ubuntu 22.04, so it has a 2.35 floor. The tag-only release workflow is
-**configured** to install and launch that release artifact on both Ubuntu 24.04
-and Debian 12; those release checks have not run yet.
+launched on Ubuntu 24.04 but not on Debian 12 (glibc 2.36). The v0.1.0 release
+DEB was built on Ubuntu 22.04 and passed install-and-launch smoke tests on both
+Ubuntu 24.04 and Debian 12, confirming the 2.35 compatibility floor for this
+release.
 
 ### Install
 

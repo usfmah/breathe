@@ -65,11 +65,11 @@ all depend on the desktop services that are actually running.
 | Fedora 44 x86_64, niri 26.04, Wayland | RPM | App built and run from source on this host; the RPM was installed and launched under Xvfb in a Fedora 44 container. Oldest Fedora actually tested: **Fedora 44**. |
 | Fedora Workstation / KDE | RPM | The code uses XDG conventions and standard freedesktop services, but these sessions have not been individually re-verified for this release. |
 | Ubuntu 22.04 x86_64 | DEB / AppImage | An Ubuntu 22.04-built DEB and AppImage both installed and/or launched under Xvfb. This is the oldest glibc runtime tested (2.35). |
-| Ubuntu 24.04 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb; the local Fedora-built DEB also launched. The release workflow is configured to repeat this check for the tagged artifact. |
-| Debian 12 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb. The local Fedora-built DEB installs but cannot launch because it needs glibc 2.39 (Debian 12 has 2.36). |
-| Linux x86_64 | AppImage | An Ubuntu 22.04-built AppImage launched under Xvfb on Ubuntu 22.04, Ubuntu 24.04 and Fedora 44. A Fedora-built local AppImage launched on Fedora 44 but is not portable to older glibc. The release workflow is configured to repeat the checks for the tagged artifact. |
+| Ubuntu 24.04 x86_64 | DEB | The Ubuntu 22.04-built v0.1.0 release DEB installed and launched under Xvfb in the release workflow. A local Fedora-built DEB also launched here. |
+| Debian 12 x86_64 | DEB | The Ubuntu 22.04-built v0.1.0 release DEB installed and launched under Xvfb. A local Fedora-built DEB installs but cannot launch because it needs glibc 2.39 (Debian 12 has 2.36). |
+| Linux x86_64 | AppImage | The Ubuntu 22.04-built v0.1.0 release AppImage launched under Xvfb on Ubuntu 24.04 and Fedora 44; a local Ubuntu 22.04 build also launched on Ubuntu 22.04. A Fedora-built local AppImage is not portable to older glibc. |
 | Arch Linux x86_64 | AUR source package | `PKGBUILD`/`.SRCINFO` are validated with `makepkg --printsrcinfo` in an Arch container. A full `makepkg -si` build is not yet exercised in this environment, and the package is **not yet published to the AUR**. |
-| Windows 10/11 x64 | NSIS | CI built the MSVC target and passed the silent install/uninstall and autostart-cleanup smoke test on Windows Server 2022 on 2026-10-19. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
+| Windows 10/11 x64 | NSIS | The v0.1.0 installer built and passed the silent install/uninstall and autostart-cleanup smoke test on Windows Server 2022. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
 
 **Do not read this table as a claim of universal Linux compatibility.** The
 native RPM and DEB are the recommended Linux packages. The AppImage is a
@@ -297,9 +297,9 @@ for notification and autostart reporting. They do **not** prove that a real
 desktop will show a toast or that a Windows toast identity is correct.
 
 CI runs the same checks on Linux and Windows, builds all packages, builds and
-validates the website on Linux, and validates the AUR metadata. The release
-workflow is configured to install and launch the RPM/DEB and AppImage under
-Xvfb; it has not run yet. See
+validates the website on Linux, and validates the AUR metadata. The v0.1.0
+release workflow also installed and launched the RPM, DEB and AppImage under
+Xvfb and passed its Windows installer smoke test. See
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
 [`.github/workflows/release.yml`](.github/workflows/release.yml), and
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
@@ -311,29 +311,29 @@ AppImage but did not install them. Locally, an Ubuntu 22.04 build launched the
 DEB on Ubuntu 22.04, Ubuntu 24.04 and Debian 12, and the AppImage on Ubuntu
 22.04, Ubuntu 24.04 and Fedora 44.
 
-The tag-only release workflow is **configured** to run these release checks
-against the tag-built artifacts, not against the local packages:
+The v0.1.0 release workflow ran these checks against the tag-built artifacts,
+not against local packages:
 
 | Artifact | Release smoke target |
 | --- | --- |
-| RPM | Fedora 44 container under Xvfb |
-| DEB | Ubuntu 24.04 and Debian 12 containers under Xvfb |
-| AppImage | Ubuntu 24.04 and Fedora 44 containers under Xvfb |
-| NSIS | Windows Server 2022 installer/uninstaller smoke test |
-| AUR metadata | `archlinux:base-devel` container (`makepkg --printsrcinfo`) |
+| RPM | Fedora 44 container under Xvfb — passed |
+| DEB | Ubuntu 24.04 and Debian 12 containers under Xvfb — passed |
+| AppImage | Ubuntu 24.04 and Fedora 44 containers under Xvfb — passed |
+| NSIS | Windows Server 2022 installer/uninstaller smoke test — passed |
+| AUR metadata | `archlinux:base-devel` container (`makepkg --printsrcinfo`) — passed |
 
-Those release checks have not run yet. A successful release run is required
-before treating the published artifacts or the landing-page download links as
-verified.
+Release v0.1.0 was published on 2026-10-19 UTC with all six expected assets.
+The live website detected the release, and each published asset URL returned
+HTTP 200. This verifies the release artifacts and website links; it does not
+replace installation on physical Windows hardware or a full Arch build.
 
 ## CI and releases
 
 - **CI** runs on pushes to `main`, pull requests, and manual dispatch. It does
   not publish releases.
-- **Release** runs on `v*` tags. It is configured to validate the tag against the
-  version sources, build RPM/DEB/AppImage/NSIS, install and launch the Linux
-  packages under Xvfb, and create or update a GitHub Release with stable
-  filenames. It has not run yet.
+- **Release** runs on `v*` tags. The v0.1.0 run passed validation, package
+  builds, Linux install/launch smoke tests, the Windows installer smoke test and
+  publication with stable filenames.
 - Release assets are attached to the GitHub Release; build artifacts are also
   available from the Actions run for a limited time.
 - The release workflow uses the repository's `GITHUB_TOKEN`, not a personal
