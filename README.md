@@ -55,7 +55,7 @@ all depend on the desktop services that are actually running.
 | Debian 12 x86_64 | DEB | A local Fedora-built DEB installed, but could not launch because the local build needs glibc 2.39 (Debian 12 has 2.36). The release workflow uses the Ubuntu 22.04 build (glibc 2.35) and is configured to launch it on Debian 12. |
 | Linux x86_64 | AppImage | A locally built Fedora artifact launched on Fedora 44 but is not portable to older glibc. The release workflow is configured to build on Ubuntu 22.04 (glibc 2.35) and launch the result under Xvfb on Ubuntu 24.04 and Fedora 44. |
 | Arch Linux x86_64 | AUR source package | `PKGBUILD`/`.SRCINFO` are validated with `makepkg --printsrcinfo` in an Arch container. A full `makepkg -si` build is not yet exercised in this environment. |
-| Windows 10/11 x64 | NSIS | The CI/release workflow is configured to build the MSVC target, silently install, check the binary and Start Menu shortcut, exercise autostart cleanup, and uninstall on a Windows Server 2022 runner. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
+| Windows 10/11 x64 | NSIS | CI built the MSVC target and passed the silent install/uninstall and autostart-cleanup smoke test on Windows Server 2022 on 2026-10-19. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
 
 **Do not read this table as a claim of universal Linux compatibility.** The
 native RPM and DEB are the recommended Linux packages. The AppImage is a
@@ -282,6 +282,12 @@ CI runs the same checks on Linux and Windows, builds all packages, validates the
 AUR metadata, and (in the release workflow) installs and launches the RPM/DEB and
 AppImage under Xvfb. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 and [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+The first CI run on `main` (2026-10-19) passed on Linux, Windows Server 2022 and
+the Arch container. The Windows job built the NSIS installer and passed its
+silent install/uninstall smoke test; the Linux job built the RPM, DEB and
+AppImage but did not install them. Installation and launch smoke tests for the
+Linux packages belong to the tag-triggered release workflow and have not run yet.
 
 ## CI and releases
 

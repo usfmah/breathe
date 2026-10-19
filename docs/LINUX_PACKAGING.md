@@ -16,13 +16,14 @@ and DEB are the recommended packages; the AppImage is a convenience artifact.
 
 | Check | Where it runs | Status |
 | --- | --- | --- |
-| RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Configured; see the latest Actions run |
+| Linux package builds (RPM/DEB/AppImage) | GitHub Actions CI, `ubuntu-22.04` | Passed on 2026-10-19 |
+| RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Configured; not run yet (tag-only) |
 | RPM install and launch (local build) | Fedora 44 container under Xvfb | Performed during packaging work |
-| DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Configured; see the latest Actions run |
+| DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Configured; not run yet (tag-only) |
 | DEB install and launch on Ubuntu 24.04 | Clean Docker container under Xvfb | Performed with the local Fedora build |
-| DEB install on Debian 12 | Clean Docker container | Installed; launch blocked by the local Fedora build's glibc 2.39. The release build uses Ubuntu 22.04 (glibc 2.35) and is launched in CI. |
-| AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Configured; see the latest Actions run |
-| AUR metadata (`makepkg --printsrcinfo`) | GitHub Actions CI, `archlinux:base-devel` container | Configured; see the latest Actions run |
+| DEB install on Debian 12 | Clean Docker container | Installed; launch blocked by the local Fedora build's glibc 2.39. The release build uses Ubuntu 22.04 (glibc 2.35) and will be launched by the release workflow when a tag is pushed. |
+| AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Configured; not run yet (tag-only) |
+| AUR metadata (`makepkg --printsrcinfo`) | GitHub Actions CI, `archlinux:base-devel` container | Passed on 2026-10-19 |
 | AUR full build/install (`makepkg -si`) | Arch Linux | **Not yet performed here** |
 | Fedora Workstation GNOME / KDE | Real desktop | Not individually re-verified for this release |
 

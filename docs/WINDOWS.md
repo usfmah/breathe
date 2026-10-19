@@ -5,7 +5,8 @@ installer named `Breathe_<version>_x64-setup.exe`.
 
 ## What the CI workflow covers
 
-The Windows job is configured to:
+The Windows job does the following; the first run on 2026-10-19 passed every
+step on `windows-2022`:
 
 - compile the Rust code and run the Rust tests for the
   `x86_64-pc-windows-msvc` target on `windows-2022`;
