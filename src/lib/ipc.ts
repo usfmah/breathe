@@ -165,7 +165,7 @@ export async function snoozeReminders(): Promise<Snapshot> {
     mockEngine.snooze();
     return { ...mockSnapshot };
   }
-  return invoke<Snapshot>("snooze_reminders", { minutes: 5 });
+  return invoke<Snapshot>("snooze_reminders");
 }
 
 export async function sendTestNotification(
