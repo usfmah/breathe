@@ -26,7 +26,7 @@ host changes; do not assume these results on another machine.
 | rustc | 1.96.0 (Fedora) | Tauri 2.12 requires ≥ 1.90 |
 | cargo | 1.96.0 (Fedora) | **`rustup` is not installed** — use the distro toolchain |
 | rpmbuild / rpm | present | RPM bundling is possible on this host |
-| `git` | present | audit recorded before the packaging changes were committed |
+| `git` | present | used for source control and audit reproducibility |
 
 ## Native libraries (verified with `pkg-config`)
 
@@ -95,7 +95,8 @@ The release/CI packaging matrix is separate:
 
 | Target | Runner / container |
 | --- | --- |
-| Linux RPM/DEB/AppImage build | `ubuntu-22.04` GitHub runner (glibc 2.35 floor) |
+| Linux RPM/DEB/AppImage build | `ubuntu-22.04` GitHub runner (glibc 2.35 floor; deprecation began 2026-09-17, retirement 2027-04-17) |
+| Website build and Pages deployment | `ubuntu-24.04` GitHub runner; does not affect the app glibc floor |
 | RPM install smoke test | `fedora:44` container |
 | DEB install smoke test | `ubuntu:24.04` and `debian:12` containers |
 | AppImage launch smoke test | `ubuntu:24.04` and `fedora:44` containers under Xvfb |

@@ -1,13 +1,21 @@
 # Release process
 
-Breathe has two separate automation paths:
+Breathe has three separate automation paths:
 
 | Workflow | Trigger | Publishes? |
 | --- | --- | --- |
 | [`ci.yml`](../.github/workflows/ci.yml) | Push to `main`, pull request, manual dispatch | No |
 | [`release.yml`](../.github/workflows/release.yml) | Push of a tag matching `v*` | Yes |
+| [`pages.yml`](../.github/workflows/pages.yml) | Push to `main`, manual dispatch | Deploys the website only |
 
-Pushing to `main` never creates a GitHub Release. Only a tag does.
+Pushing to `main` never creates a GitHub Release. Only a tag does. The release
+workflow does not deploy the website, and the Pages workflow does not publish a
+release.
+
+GitHub Pages must be enabled by the repository owner with **Settings → Pages →
+Source: GitHub Actions** before the first website deployment. The workflow's
+`GITHUB_TOKEN` cannot change that repository setting. See
+[`WEBSITE.md`](WEBSITE.md).
 
 ## Version sources
 
@@ -59,8 +67,9 @@ git commit -m "release: v0.1.0"
 git push origin main
 ```
 
-Wait for the `CI` workflow on `main` to pass. Then tag the exact commit that
-passed:
+Wait for the `CI` workflow on `main` to pass. If the website changed, also wait
+for the `Pages` workflow and verify the site; Pages must already be enabled as
+described above. Then tag the exact commit that passed:
 
 ```bash
 git tag -a v0.1.0 -m "Breathe v0.1.0"
@@ -90,23 +99,29 @@ recreate the tag, but prefer a new patch version to avoid ambiguity.
 1. **Validate** — checks that `v<tag>` matches `package.json`.
 2. **Linux** — on `ubuntu-22.04`:
    - installs Node 24 and Rust 1.96.0,
-   - runs `npm ci`, frontend tests, type check, Rust tests,
-   - builds RPM, DEB and AppImage,
+   - runs `npm ci`, frontend tests, type check, Rust tests with `--locked`,
+   - builds RPM, DEB and AppImage with Cargo's `--locked` passed through the
+     Tauri CLI,
    - verifies the exact filenames,
    - uploads each artifact.
 3. **Windows** — on `windows-2022`:
-   - runs the same tests,
-   - builds the NSIS installer,
+   - runs the same tests with `--locked`,
+   - builds the NSIS installer with Cargo's `--locked`,
    - silently installs, checks the binary/Start Menu shortcut/uninstaller, creates
      a simulated autostart Run value, and uninstalls while checking cleanup,
    - uploads the installer.
-4. **Smoke tests** — installs and launches the RPM in a Fedora 44 container,
-   installs and launches the DEB in Ubuntu 24.04 and Debian 12 containers, and
-   launches the AppImage under Xvfb on Ubuntu 24.04 and Fedora 44.
+4. **Smoke tests** — installs and launches the tag-built RPM in a Fedora 44
+   container, installs and launches the tag-built DEB in Ubuntu 24.04 and Debian
+   12 containers, and launches the tag-built AppImage under Xvfb on Ubuntu 24.04
+   and Fedora 44.
 5. **Publish** — downloads every artifact, fails if any required file is missing,
    creates the source tarball, renders the AUR files with a real checksum,
-   validates the rendered AUR metadata in an Arch container, and creates or
-   updates the GitHub Release.
+   validates the rendered AUR metadata in an Arch container, creates or updates
+   the GitHub Release, removes any unexpected stale release assets, and uploads
+   exactly the six expected files.
+
+This workflow has not run yet. The numbered behavior above describes configured
+behavior, not a completed release.
 
 The publish job requests `contents: write`; every other job has read-only
 permissions. The workflow uses `GITHUB_TOKEN`, not a personal access token. No
@@ -120,8 +135,10 @@ The publish job checks whether the release already exists:
 - rerun: `gh release edit`, then `gh release upload --clobber`
 
 Re-running a failed release run is designed not to create duplicate releases.
-It does rewrite assets, so a force-moved tag would change the source tarball and
-AUR checksum; avoid moving published tags.
+It also removes release assets whose names are not in the six expected filenames
+and uploads the expected files with `--clobber`. It does rewrite assets, so a
+force-moved tag would change the source tarball and AUR checksum; avoid moving
+published tags.
 
 ## Artifacts
 
@@ -191,6 +208,7 @@ Automation does not replace a desktop:
 
 - [ ] `CI` is green on the release commit.
 - [ ] `npm run check:version` passes.
+- [ ] The `Pages` workflow is green and `https://usfmah.github.io/breathe/` serves the site over HTTPS.
 - [ ] The release workflow is green end to end.
 - [ ] Download every asset and confirm the filenames above.
 - [ ] Install the RPM on Fedora 44 and launch it.
@@ -201,6 +219,10 @@ Automation does not replace a desktop:
       autostart, DPI, uninstall).
 - [ ] Run `makepkg -si` on Arch and launch the package.
 - [ ] Submit the AUR files and confirm the AUR package builds.
+- [ ] Load the landing page after publication and confirm it detects the release,
+      shows the exact version/date, and links the six published assets.
+- [ ] Confirm a missing-asset/API-failure fallback still points to GitHub Releases
+      rather than an unverified file.
 
 ## Signing and trust
 

@@ -17,10 +17,10 @@ and DEB are the recommended packages; the AppImage is a convenience artifact.
 | Check | Where it runs | Status |
 | --- | --- | --- |
 | Linux package builds (RPM/DEB/AppImage) | GitHub Actions CI, `ubuntu-22.04` | Passed on 2026-10-19 |
-| RPM install and launch (Fedora 44 build) | Fedora 44 container under Xvfb | Passed during packaging work |
-| DEB install and launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed during packaging work |
+| RPM install and launch (Fedora 44 build) | Fedora 44 container under Xvfb | Passed locally during packaging work; not a CI or release run |
+| DEB install and launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed locally during packaging work; not a CI or release run |
 | DEB install and launch (Fedora 44 build) | Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed on Ubuntu 24.04; fails on Debian 12 with a `GLIBC_2.39` symbol error, as expected for a newer build host |
-| AppImage launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Fedora 44 containers under Xvfb | Passed during packaging work |
+| AppImage launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Fedora 44 containers under Xvfb | Passed locally during packaging work; not a CI or release run |
 | RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Configured; not run yet (tag-only) |
 | DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Configured; not run yet (tag-only) |
 | AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Configured; not run yet (tag-only) |
@@ -39,9 +39,13 @@ because the glibc version is high enough: WebKitGTK 4.1, GTK 3, librsvg and
 libappindicator must also be available.
 
 The workflows deliberately pin `ubuntu-22.04` for that glibc floor. GitHub's
-`ubuntu-22.04` runner image is on a deprecation path; when it is retired, move to
-the oldest available image and re-evaluate the supported distributions rather
-than silently raising the glibc requirement.
+`ubuntu-22.04` runner image began its deprecation period on **2026-09-17** and
+is scheduled to be fully unsupported by **2027-04-17** ([runner-images
+announcement](https://github.com/actions/runner-images/issues/14254)). Keep the
+intended compatibility target rather than silently switching to a newer runner:
+when the image is retired, move to the oldest available image, measure the new
+glibc and library baseline, and re-evaluate the supported distribution table.
+Changing the runner is a compatibility change, not a routine dependency update.
 
 ## Build dependencies
 
@@ -110,13 +114,17 @@ needs the Rust and Node toolchains; the installed package does not.
 npm ci
 
 # All three Linux bundles in one run
-npm run tauri build -- --bundles rpm,deb,appimage
+npm run tauri build -- --bundles rpm,deb,appimage -- --locked
 
 # Or select one
-npm run tauri build -- --bundles rpm
-npm run tauri build -- --bundles deb
-npm run tauri build -- --bundles appimage
+npm run tauri build -- --bundles rpm -- --locked
+npm run tauri build -- --bundles deb -- --locked
+npm run tauri build -- --bundles appimage -- --locked
 ```
+
+The final `-- --locked` is passed through the Tauri CLI to Cargo; it is not a
+Tauri-specific option. `cargo test --locked` and `cargo build --locked` are used
+directly for the Rust checks.
 
 Outputs:
 
@@ -166,7 +174,9 @@ rpm -qpl Breathe-0.1.0-1.x86_64.rpm
 
 The package installs `/usr/bin/breathe`, a desktop entry at
 `/usr/share/applications/Breathe.desktop`, and hicolor icons at 32, 128, 256 and
-512 px.
+512 px. The 256 px icon is installed at the standard path
+`/usr/share/icons/hicolor/256x256/apps/breathe.png`; the RPM and DEB archives
+were inspected directly after rebuilding with `src-tauri/icons/256x256.png`.
 
 ## DEB
 
@@ -190,8 +200,9 @@ Debian 12/13. The package was installed successfully on Ubuntu 24.04 and Debian
 
 The **local Fedora-built** DEB carries a glibc 2.39 symbol requirement: it
 launched on Ubuntu 24.04 but not on Debian 12 (glibc 2.36). The release DEB is
-built on Ubuntu 22.04, so it has a 2.35 floor; the release workflow installs and
-launches that artifact on both Ubuntu 24.04 and Debian 12.
+built on Ubuntu 22.04, so it has a 2.35 floor. The tag-only release workflow is
+**configured** to install and launch that release artifact on both Ubuntu 24.04
+and Debian 12; those release checks have not run yet.
 
 ### Install
 
@@ -208,7 +219,8 @@ dpkg-deb -c Breathe_0.1.0_amd64.deb
 ```
 
 The DEB installs `/usr/bin/breathe`, `Breathe.desktop`, and the same hicolor
-icons as the RPM.
+icons as the RPM, including
+`/usr/share/icons/hicolor/256x256/apps/breathe.png`.
 
 ## AppImage
 
@@ -261,7 +273,7 @@ extraction fallback avoids the FUSE dependency entirely.
 
 The AUR package is a **source** package named `breathe`. It builds the frontend
 with `npm ci && npm run build`, builds the Rust binary with
-`cargo build --release`, then installs:
+`cargo build --release --locked`, then installs:
 
 ```text
 /usr/bin/breathe
@@ -286,7 +298,9 @@ makepkg -si
 ```
 
 The workflow does **not** push to the AUR (that would require AUR credentials).
-See [`RELEASE.md`](RELEASE.md) for the manual AUR submission step.
+The package is **not yet published to the AUR**, so `yay -S breathe` and similar
+commands do not work yet. See [`RELEASE.md`](RELEASE.md) for the manual AUR
+submission step.
 
 ## Linux notifications, tray and autostart
 

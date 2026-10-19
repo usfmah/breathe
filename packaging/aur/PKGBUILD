@@ -55,7 +55,7 @@ package() {
     "$pkgdir/usr/share/icons/hicolor/32x32/apps/breathe.png"
   install -Dm644 src-tauri/icons/128x128.png \
     "$pkgdir/usr/share/icons/hicolor/128x128/apps/breathe.png"
-  install -Dm644 src-tauri/icons/128x128@2x.png \
+  install -Dm644 src-tauri/icons/256x256.png \
     "$pkgdir/usr/share/icons/hicolor/256x256/apps/breathe.png"
   install -Dm644 src-tauri/icons/icon.png \
     "$pkgdir/usr/share/icons/hicolor/512x512/apps/breathe.png"

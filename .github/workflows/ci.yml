@@ -85,11 +85,17 @@ jobs:
       - name: Build frontend (required before cargo test)
         run: npm run build
 
+      - name: Build website
+        run: npm run website:build
+
+      - name: Verify website base path and local assets
+        run: npm run website:check
+
       - name: Run Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
       - name: Build Linux bundles
-        run: npm run tauri build -- --bundles rpm,deb,appimage
+        run: npm run tauri build -- --bundles rpm,deb,appimage -- --locked
 
       - name: Verify bundle filenames
         run: |
@@ -172,10 +178,10 @@ jobs:
         run: npm run build
 
       - name: Run Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
       - name: Build NSIS installer
-        run: npm run tauri build -- --bundles nsis
+        run: npm run tauri build -- --bundles nsis -- --locked
 
       - name: Verify NSIS filename
         shell: pwsh

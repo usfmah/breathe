@@ -178,9 +178,12 @@ wire format do not change.
   real SHA-256 of the generated source tarball. The repository copy uses
   `sha256sums=('SKIP')` until a release exists.
 - `.github/workflows/ci.yml` builds and tests on Linux and Windows, builds the
-  Linux/NSIS packages, validates the AUR metadata, and never publishes.
+  Linux/NSIS packages, builds and checks the website, validates the AUR metadata,
+  and never publishes.
 - `.github/workflows/release.yml` runs on `v*` tags, smoke-tests installs, and
   publishes the release with `GITHUB_TOKEN`.
+- `.github/workflows/pages.yml` deploys the static landing page to GitHub Pages
+  from `main` only, after Pages has been enabled by the repository owner.
 
 The release build host is Ubuntu 22.04, which keeps the glibc floor at 2.35.
 Do not publish an AppImage built on a newer host as the release artifact; it
@@ -188,15 +191,20 @@ will not run on older distributions.
 
 ## Testing
 
-- `cargo test --manifest-path src-tauri/Cargo.toml` — scheduler, model,
+- `cargo test --locked --manifest-path src-tauri/Cargo.toml` — scheduler, model,
   validation, settings round-trips, plus Linux and Windows unit tests for the
   notification and autostart reporting helpers.
-- `npm test` — presentation mapping and React components with Testing Library.
+- `npm test` — app presentation/component tests and website release-selection
+  tests.
 - `npm run typecheck` — strict TypeScript for the app and the Vite config.
+- `npm run website:build` — website production build and strict website types.
+- `npm run website:check` — `/breathe/` base path, bundled asset, screenshot and
+  404-page verification.
 - `npm run check:version` — keeps `package.json`, `package-lock.json`,
   `tauri.conf.json` and `Cargo.toml` in lockstep.
-- `npm run tauri build -- --bundles rpm,deb,appimage` — Linux package build.
-- `npm run tauri build -- --bundles nsis` — Windows installer build.
+- `npm run tauri build -- --bundles rpm,deb,appimage -- --locked` — Linux package
+  build (the final `-- --locked` is forwarded to Cargo).
+- `npm run tauri build -- --bundles nsis -- --locked` — Windows installer build.
 
 `cargo test` compiles `tauri::generate_context!`, so `dist/` must exist. CI runs
 `npm run build` before `cargo test` for that reason.

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Breathe — a calmer way to work</title>
+    <meta
+      name="description"
+      content="Breathe is a calm, open-source desktop companion for scheduled movement breaks and eye-rest reminders on Linux and Windows."
+    />
+    <meta name="theme-color" content="#f7f2e8" />
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Breathe — a calmer way to work" />
+    <meta
+      property="og:description"
+      content="Quiet, scheduled movement and eye-rest reminders for Linux and Windows."
+    />
+    <meta property="og:url" content="https://usfmah.github.io/breathe/" />
+    <meta
+      property="og:image"
+      content="https://usfmah.github.io/breathe/images/main-light.png"
+    />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("breathe-theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

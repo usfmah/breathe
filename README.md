@@ -9,6 +9,19 @@ reminder is a desktop notification, and nothing else.
 
 ![Breathe main window](docs/images/main-light.png)
 
+## Website and downloads
+
+The landing page source lives in [`website/`](website/) and is built for
+`https://usfmah.github.io/breathe/` by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml). GitHub Pages must
+be enabled with **Settings → Pages → Source: GitHub Actions** before the first
+deployment; see [`docs/WEBSITE.md`](docs/WEBSITE.md).
+
+The page reads the latest stable release from GitHub's public Releases API at
+runtime. Downloads appear only when the exact RPM, DEB, AppImage, NSIS, source,
+or AUR filename is present in that release. If the API is unavailable, the page
+shows a GitHub Releases fallback instead of linking to an unverified file.
+
 ## What it does
 
 - **Circular countdown** with the next reminder in `MM:SS`, using muted sage and
@@ -55,7 +68,7 @@ all depend on the desktop services that are actually running.
 | Ubuntu 24.04 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb; the local Fedora-built DEB also launched. The release workflow is configured to repeat this check for the tagged artifact. |
 | Debian 12 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb. The local Fedora-built DEB installs but cannot launch because it needs glibc 2.39 (Debian 12 has 2.36). |
 | Linux x86_64 | AppImage | An Ubuntu 22.04-built AppImage launched under Xvfb on Ubuntu 22.04, Ubuntu 24.04 and Fedora 44. A Fedora-built local AppImage launched on Fedora 44 but is not portable to older glibc. The release workflow is configured to repeat the checks for the tagged artifact. |
-| Arch Linux x86_64 | AUR source package | `PKGBUILD`/`.SRCINFO` are validated with `makepkg --printsrcinfo` in an Arch container. A full `makepkg -si` build is not yet exercised in this environment. |
+| Arch Linux x86_64 | AUR source package | `PKGBUILD`/`.SRCINFO` are validated with `makepkg --printsrcinfo` in an Arch container. A full `makepkg -si` build is not yet exercised in this environment, and the package is **not yet published to the AUR**. |
 | Windows 10/11 x64 | NSIS | CI built the MSVC target and passed the silent install/uninstall and autostart-cleanup smoke test on Windows Server 2022 on 2026-10-19. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
 
 **Do not read this table as a claim of universal Linux compatibility.** The
@@ -208,11 +221,14 @@ See [`docs/WINDOWS.md`](docs/WINDOWS.md) for the full setup.
 
 ```bash
 # Linux: RPM, DEB and AppImage
-npm run tauri build -- --bundles rpm,deb,appimage
+npm run tauri build -- --bundles rpm,deb,appimage -- --locked
 
 # Windows: NSIS installer
-npm run tauri build -- --bundles nsis
+npm run tauri build -- --bundles nsis -- --locked
 ```
+
+The final `-- --locked` is forwarded by the Tauri CLI to Cargo. Tauri does not
+expose a separate `--locked` option of its own.
 
 Output locations:
 
@@ -269,8 +285,10 @@ remove the value with the command above.
 
 ```bash
 npm run typecheck   # strict TypeScript, app + config files
-npm test            # frontend unit tests (Vitest)
-cargo test --manifest-path src-tauri/Cargo.toml   # scheduler, model, settings, platform helpers
+npm test            # app and website unit tests (Vitest)
+npm run website:build  # website production build + type check
+npm run website:check  # verify /breathe/ base path, assets and 404 page
+cargo test --locked --manifest-path src-tauri/Cargo.toml   # scheduler, model, settings, platform helpers
 npm run check:version  # package.json, package-lock.json, tauri.conf.json and Cargo.toml must agree
 ```
 
@@ -278,28 +296,44 @@ The Rust tests are platform-neutral, plus Linux- and Windows-specific unit tests
 for notification and autostart reporting. They do **not** prove that a real
 desktop will show a toast or that a Windows toast identity is correct.
 
-CI runs the same checks on Linux and Windows, builds all packages, validates the
-AUR metadata, and (in the release workflow) installs and launches the RPM/DEB and
-AppImage under Xvfb. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-and [`.github/workflows/release.yml`](.github/workflows/release.yml).
+CI runs the same checks on Linux and Windows, builds all packages, builds and
+validates the website on Linux, and validates the AUR metadata. The release
+workflow is configured to install and launch the RPM/DEB and AppImage under
+Xvfb; it has not run yet. See
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml),
+[`.github/workflows/release.yml`](.github/workflows/release.yml), and
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml).
 
 The first CI run on `main` (2026-10-19) passed on Linux, Windows Server 2022 and
 the Arch container. The Windows job built the NSIS installer and passed its
 silent install/uninstall smoke test; the Linux job built the RPM, DEB and
 AppImage but did not install them. Locally, an Ubuntu 22.04 build launched the
 DEB on Ubuntu 22.04, Ubuntu 24.04 and Debian 12, and the AppImage on Ubuntu
-22.04, Ubuntu 24.04 and Fedora 44. The tag-only release workflow repeats those
-installation and launch checks against the published artifacts; it has not run
-yet.
+22.04, Ubuntu 24.04 and Fedora 44.
+
+The tag-only release workflow is **configured** to run these release checks
+against the tag-built artifacts, not against the local packages:
+
+| Artifact | Release smoke target |
+| --- | --- |
+| RPM | Fedora 44 container under Xvfb |
+| DEB | Ubuntu 24.04 and Debian 12 containers under Xvfb |
+| AppImage | Ubuntu 24.04 and Fedora 44 containers under Xvfb |
+| NSIS | Windows Server 2022 installer/uninstaller smoke test |
+| AUR metadata | `archlinux:base-devel` container (`makepkg --printsrcinfo`) |
+
+Those release checks have not run yet. A successful release run is required
+before treating the published artifacts or the landing-page download links as
+verified.
 
 ## CI and releases
 
 - **CI** runs on pushes to `main`, pull requests, and manual dispatch. It does
   not publish releases.
-- **Release** runs on `v*` tags. It validates the tag against the version
-  sources, builds RPM/DEB/AppImage/NSIS, installs and launches the Linux
-  packages under Xvfb, and creates or updates a GitHub Release with stable
-  filenames.
+- **Release** runs on `v*` tags. It is configured to validate the tag against the
+  version sources, build RPM/DEB/AppImage/NSIS, install and launch the Linux
+  packages under Xvfb, and create or update a GitHub Release with stable
+  filenames. It has not run yet.
 - Release assets are attached to the GitHub Release; build artifacts are also
   available from the Actions run for a limited time.
 - The release workflow uses the repository's `GITHUB_TOKEN`, not a personal
@@ -337,7 +371,8 @@ steps are in [`docs/RELEASE.md`](docs/RELEASE.md).
   treated as normal elapsed time; missed reminders are dropped rather than
   replayed.
 - **The AUR package is validated, not fully built, in this environment.** A full
-  `makepkg -si` run on Arch is still a manual release check.
+  `makepkg -si` run on Arch is still a manual release check, and the package is
+  not yet published to the AUR. Use the release AUR tarball to build locally.
 
 ## Documentation
 
@@ -349,6 +384,8 @@ steps are in [`docs/RELEASE.md`](docs/RELEASE.md).
   tray and startup details.
 - [`docs/RELEASE.md`](docs/RELEASE.md) — versioning, CI/release workflows, tag
   commands and artifact locations.
+- [`docs/WEBSITE.md`](docs/WEBSITE.md) — landing-page development, GitHub Pages
+  setup, base path and release-data behavior.
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — notifications, tray,
   autostart, sleep/resume, AppImage and Windows problems.
 - [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) — the Linux machine this project

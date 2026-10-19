@@ -160,9 +160,12 @@ npm ci
 npm run typecheck
 npm test
 npm run build
-cargo test --manifest-path src-tauri/Cargo.toml
-npm run tauri build -- --bundles nsis
+cargo test --locked --manifest-path src-tauri/Cargo.toml
+npm run tauri build -- --bundles nsis -- --locked
 ```
+
+The final `-- --locked` is forwarded by the Tauri CLI to Cargo. The same command
+is used in the Windows CI and release jobs.
 
 The installer is written to:
 
