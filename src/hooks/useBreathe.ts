@@ -98,11 +98,17 @@ export function useBreathe(): BreatheController {
     mounted.current = true;
 
     void (async () => {
+      // In the browser preview (`npm run dev` without Tauri) there are no window
+      // labels, so `?window=settings` lets you work on the settings window
+      // without launching the desktop app. Never used inside Tauri.
+      const browserLabel = new URLSearchParams(window.location.search).get(
+        "window",
+      );
       const label = await import("@tauri-apps/api/window")
         .then((mod) =>
-          isTauri() ? mod.getCurrentWindow().label : "main",
+          isTauri() ? mod.getCurrentWindow().label : browserLabel ?? "main",
         )
-        .catch(() => "main");
+        .catch(() => browserLabel ?? "main");
       if (mounted.current) setWindowLabel(label);
     })();
 

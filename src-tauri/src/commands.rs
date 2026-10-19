@@ -17,6 +17,10 @@ use crate::scheduler::SchedulerConfig;
 use crate::theme::{self, MAIN_WINDOW, SETTINGS_WINDOW};
 use crate::{autostart, notify, settings_store, AppState};
 
+/// The settings dialog is a fixed-size panel; see `open_settings_window`.
+const SETTINGS_WIDTH: f64 = 780.0;
+const SETTINGS_HEIGHT: f64 = 600.0;
+
 /* -------------------------------------------------------------------------- */
 /* Queries                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -266,18 +270,30 @@ pub fn open_settings_window(app: &AppHandle) -> Result<(), String> {
         WebviewUrl::App("index.html".into()),
     )
     .title("Breathe Settings")
-    .inner_size(780.0, 600.0)
+    // Fixed size: the dialog has one layout, and pinning min == max is what
+    // makes tiling compositors (niri) float it instead of stretching it into a
+    // column. The window is created hidden and shown below, because a size
+    // requested while the surface is already mapped is not honoured.
+    .inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
+    .min_inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
+    .max_inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
     .resizable(false)
     .maximizable(false)
     .decorations(false)
-    .center()
-    .visible(true)
+    .visible(false)
     .background_color(theme::initial_background(preference))
     .build()
     .map_err(|error| format!("could not create the settings window: {error}"))?;
 
     let _ = window.set_theme(theme::tauri_theme(preference));
     attach_close_behaviour(&window);
+
+    let _ = window.set_size(tauri::LogicalSize::new(
+        SETTINGS_WIDTH,
+        SETTINGS_HEIGHT,
+    ));
+    let _ = window.center();
+    let _ = window.show();
     let _ = window.set_focus();
 
     Ok(())
