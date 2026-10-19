@@ -25,6 +25,18 @@ reminder is a desktop notification, and nothing else.
 - **Start with your session** (optional XDG autostart entry).
 - A **system-tray menu** on desktops whose bar hosts StatusNotifierItems.
 
+## Settings
+
+Settings are split into General, Reminders, Appearance, Startup and About.
+Notification availability is reported from a real session-bus round trip rather
+than guessed, so the Reminders panel can tell you whether the desktop will
+actually show a reminder.
+
+![Breathe settings window](docs/images/settings-reminders.png)
+
+The interface uses React 19, Tailwind CSS 4 and `lucide-react` for its icon set
+(with a bespoke leaf mark); see [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+
 ## Requirements
 
 - Fedora Linux (tested on Fedora 44, niri 26.04, Wayland).

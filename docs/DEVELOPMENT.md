@@ -26,6 +26,19 @@ There is **one** scheduler, in Rust. React renders `Snapshot` values pushed from
 Rust; it never owns a timer. The only `setInterval` in the frontend is inside the
 browser-only mock.
 
+## Icons
+
+Functional glyphs come from [`lucide-react`](https://lucide.dev/). Its 24px grid,
+rounded joins and 1.7px strokes are the language the original hand-drawn set was
+already imitating, so the switch is visually a no-op while giving us one
+consistent, tree-shaken catalogue to grow into. `src/components/icons.tsx` keeps
+the call-site names (`ClockIcon`, `EyeIcon`, …) and applies the app defaults
+(decorative `aria-hidden`, `currentColor`, 1.7px stroke) in one place.
+
+The one bespoke asset is the two-tone **leaf mark**. It is the brand, not a UI
+glyph, and is intentionally not replaced by a generic leaf. Add new UI icons by
+wrapping a Lucide component with `icon(...)` rather than drawing paths by hand.
+
 ## Scheduler policy
 
 The scheduler lives in `scheduler.rs` behind a small API (`tick`, `pause`,
