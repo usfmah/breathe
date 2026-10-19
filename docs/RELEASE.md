@@ -229,10 +229,18 @@ The first items were verified for v0.1.0. Automation does not replace a desktop:
 
 ## Signing and trust
 
-- The Windows installer is **not code-signed**; SmartScreen may warn.
+- The published v0.1.0 Windows installer is **not code-signed**; Windows may
+  show an "Unknown publisher" warning.
+- Future Windows releases require the repository Actions secrets
+  `WINDOWS_SIGNING_CERTIFICATE` (base64 password-protected PFX) and
+  `WINDOWS_SIGNING_PASSWORD`. CI signs with SHA-256, applies an RFC 3161
+  timestamp, verifies the Authenticode signature, and blocks publication if
+  signing fails. See [`WINDOWS.md`](WINDOWS.md) for setup instructions.
+- Signing identifies a trusted publisher, but SmartScreen reputation warnings
+  may continue for new files or publishers until sufficient reputation builds.
 - The RPM and DEB are **not signed** with a repository key. Users install local
   files, so `dnf`/`apt` may ask for confirmation.
 - No auto-update channel is configured.
 
-If signing is added later, it must be a separate change with its own secret
-management; do not put signing keys in a workflow triggered by pull requests.
+The v0.1.0 website warning remains until a signed Windows release is published.
+Do not expose signing secrets to workflows triggered by pull requests.

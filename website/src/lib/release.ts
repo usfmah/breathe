@@ -19,6 +19,7 @@ export interface GitHubRelease {
   html_url: string;
   draft: boolean;
   prerelease: boolean;
+  body?: string | null;
   assets: ReleaseAsset[];
 }
 
@@ -26,6 +27,7 @@ export interface SelectedRelease {
   release: GitHubRelease;
   version: string;
   assets: Record<AssetKey, ReleaseAsset | null>;
+  windowsSigned: boolean;
 }
 
 export type LatestReleaseState =
@@ -62,7 +64,7 @@ function parseAsset(value: unknown): ReleaseAsset | null {
 
 export function parseGitHubRelease(value: unknown): GitHubRelease | null {
   if (!isRecord(value)) return null;
-  const { tag_name, name, published_at, html_url, draft, prerelease, assets } = value;
+  const { tag_name, name, published_at, html_url, draft, prerelease, body, assets } = value;
   if (
     typeof tag_name !== "string" ||
     typeof html_url !== "string" ||
@@ -84,6 +86,7 @@ export function parseGitHubRelease(value: unknown): GitHubRelease | null {
     html_url,
     draft,
     prerelease,
+    body: typeof body === "string" ? body : null,
     assets: parsedAssets,
   };
 }
@@ -145,7 +148,14 @@ export function selectReleaseAssets(release: GitHubRelease): SelectedRelease | n
         : null;
   }
 
-  return { release, version, assets };
+  return {
+    release,
+    version,
+    assets,
+    windowsSigned: /Windows installer signature: Authenticode verified\./i.test(
+      release.body ?? "",
+    ),
+  };
 }
 
 export async function fetchLatestRelease(

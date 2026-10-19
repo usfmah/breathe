@@ -380,26 +380,21 @@ function InstallPanel({
             </li>
             <li>Launch Breathe from the Start Menu.</li>
           </ol>
-          <div className="callout callout--warning">
-            <CircleAlert aria-hidden="true" />
-            <div>
-              <strong>The installer is unsigned.</strong>
-              <p>
-                Windows SmartScreen may show “Unknown publisher”. Verify the
-                download source before choosing “Run anyway”. WebView2 is
-                required at runtime; if it is missing, the installer downloads
-                Microsoft’s bootstrapper, so the first install needs an internet
-                connection.
-              </p>
-            </div>
-          </div>
+          <p className="install-note">
+            WebView2 is required at runtime. If it is missing, the installer
+            downloads Microsoft’s bootstrapper, so the first install needs an
+            internet connection.
+          </p>
           <InstallAside
             title="What to expect"
             items={[
               { label: "Package", value: names.windows },
               { label: "Install type", value: "Per-user NSIS" },
               { label: "Runtime", value: "WebView2 Evergreen" },
-              { label: "Signing", value: "Unsigned" },
+              {
+                label: "Signing",
+                value: selected?.windowsSigned ? "Authenticode verified" : "Unsigned",
+              },
             ]}
           />
         </div>
@@ -920,19 +915,6 @@ function App() {
               </article>
             </div>
 
-            <div className="limitations">
-              <div className="limitations-heading">
-                <CircleAlert aria-hidden="true" />
-                <h3>Known limitations</h3>
-              </div>
-              <ul>
-                <li>No package is signed, including the Windows installer. SmartScreen may warn.</li>
-                <li>There is no auto-updater, crash reporting, or account system.</li>
-                <li>Linux tray clicks are a Tauri/AppIndicator limitation; actions live in the tray menu.</li>
-                <li>Windows toast delivery, tray behavior, autostart after reboot, and DPI scaling still need manual testing on Windows 10/11 hardware.</li>
-                <li>The AUR package is not published yet; the release includes source and metadata only.</li>
-              </ul>
-            </div>
           </div>
         </section>
 

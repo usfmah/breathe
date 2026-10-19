@@ -404,27 +404,39 @@ fn apply_running(app: &AppHandle, running: bool) -> Result<(), String> {
 fn sync_tray(app: &AppHandle, snapshot: &Snapshot) {
     let state = app.state::<AppState>();
     let settings = state.current_settings();
-
-    let Ok(handles) = state.tray.lock() else {
-        return;
-    };
-    let Some(handles) = handles.as_ref() else {
+    // Clone the handles and release the app-state lock before scheduling any
+    // native menu work. On Windows, Tauri menu setters synchronously marshal to
+    // the UI thread. Calling them from the scheduler while holding this lock
+    // can deadlock a UI command that also needs app state.
+    let handles = state
+        .tray
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .as_ref()
+        .cloned();
+    let Some(handles) = handles else {
         return;
     };
 
     let tooltip = tooltip_for(snapshot);
-    let tooltip_changed = handles.sync(
-        snapshot.state,
-        settings.snooze_enabled,
-        settings.eyes_enabled || settings.movement_enabled,
-        &tooltip,
-    );
+    let state = snapshot.state;
+    let snooze_enabled = settings.snooze_enabled;
+    let reminders_enabled = settings.eyes_enabled || settings.movement_enabled;
+    let app = app.clone();
 
-    if tooltip_changed {
-        if let Some(icon) = app.tray_by_id(crate::tray::TRAY_ID) {
-            let _ = icon.set_tooltip(Some(tooltip));
+    // MenuItem and tray icon setters marshal synchronously to the main thread.
+    // Run the whole tray refresh there so the scheduler never waits on the UI
+    // thread while holding a lock the UI may need.
+    let _ = app.clone().run_on_main_thread(move || {
+        let tooltip_changed =
+            handles.sync(state, snooze_enabled, reminders_enabled, &tooltip);
+
+        if tooltip_changed {
+            if let Some(icon) = app.tray_by_id(crate::tray::TRAY_ID) {
+                let _ = icon.set_tooltip(Some(tooltip));
+            }
         }
-    }
+    });
 }
 
 fn tooltip_for(snapshot: &Snapshot) -> String {

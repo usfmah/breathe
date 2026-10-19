@@ -284,9 +284,10 @@ installer.
 
 ### SmartScreen warns about an unknown publisher
 
-The installer is not code-signed. Verify the download source, then use
-*More info → Run anyway* if you trust it. There is no auto-updater and no
-signing key in this repository.
+The published v0.1.0 installer is not code-signed. Verify the download source
+before running it. Future tagged releases require a verified Authenticode
+signature; a signed new publisher can still receive a SmartScreen reputation
+prompt. Do not disable SmartScreen system-wide.
 
 ## Manual verification still required
 

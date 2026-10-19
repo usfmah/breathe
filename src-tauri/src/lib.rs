@@ -20,7 +20,7 @@ mod tray;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::Manager;
@@ -35,7 +35,7 @@ pub struct AppState {
     pub settings: Mutex<Settings>,
     /// Whether the main window is currently hidden. Orthogonal to the schedule.
     hidden: AtomicBool,
-    tray: Mutex<Option<tray::TrayHandles>>,
+    tray: Mutex<Option<Arc<tray::TrayHandles>>>,
     stop_worker: Mutex<Option<Sender<()>>>,
 }
 
@@ -84,7 +84,7 @@ impl AppState {
         *self
             .tray
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(handles);
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(Arc::new(handles));
     }
 
     pub fn set_stop_worker(&self, sender: Sender<()>) {

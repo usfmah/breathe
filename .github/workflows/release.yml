@@ -210,6 +210,50 @@ jobs:
           $installer = "src-tauri/target/release/bundle/nsis/Breathe_${version}_x64-setup.exe"
           if (-not (Test-Path $installer)) { throw "Missing $installer" }
 
+      - name: Sign Windows installer with Authenticode
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE }}
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE) -or
+              [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PASSWORD)) {
+            throw "Windows signing is required. Configure the WINDOWS_SIGNING_CERTIFICATE and WINDOWS_SIGNING_PASSWORD Actions secrets."
+          }
+
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $installer = (Resolve-Path "src-tauri/target/release/bundle/nsis/Breathe_${version}_x64-setup.exe").Path
+          $certificatePath = Join-Path $env:RUNNER_TEMP "breathe-signing.pfx"
+          try {
+            [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE))
+            $sdkBins = Join-Path ${env:ProgramFiles(x86)} "Windows Kits/10/bin"
+            $signTool = Get-ChildItem -Path $sdkBins -Filter signtool.exe -Recurse -ErrorAction Stop |
+              Where-Object { $_.Directory.Name -eq "x64" } |
+              Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+            if (-not $signTool) { throw "Windows SDK SignTool was not found on the runner." }
+
+            & $signTool sign /fd SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_PASSWORD `
+              /tr https://timestamp.digicert.com /td SHA256 /d "Breathe" /v $installer
+            if ($LASTEXITCODE -ne 0) { throw "SignTool failed to sign the Windows installer (exit code $LASTEXITCODE)." }
+          }
+          finally {
+            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify Authenticode signature
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $installer = (Resolve-Path "src-tauri/target/release/bundle/nsis/Breathe_${version}_x64-setup.exe").Path
+          $signature = Get-AuthenticodeSignature -FilePath $installer
+          if ($signature.Status -ne "Valid") {
+            throw "Installer signature status is '$($signature.Status)': $($signature.StatusMessage)"
+          }
+          if (-not $signature.SignerCertificate) { throw "Installer has no Authenticode signer certificate." }
+          Write-Host "Verified publisher: $($signature.SignerCertificate.Subject)"
+
       - name: Smoke-test the NSIS installer
         shell: pwsh
         run: |
@@ -475,6 +519,8 @@ jobs:
           | Arch Linux | `Breathe-__VERSION__-aur.tar.gz` |
           | Source | `Breathe-__VERSION__-source.tar.gz` |
 
+          Windows installer signature: Authenticode verified.
+
           ### Install
 
           Fedora:
@@ -512,11 +558,11 @@ jobs:
 
           Windows:
 
-          Run `Breathe___VERSION___x64-setup.exe`. The installer is per-user and
-          does not require administrator rights. If WebView2 is missing, the
-          installer downloads the bootstrapper and therefore needs an internet
-          connection. The installer is not code-signed, so Windows SmartScreen
-          may show a warning.
+          Run `Breathe___VERSION___x64-setup.exe`. The installer is Authenticode
+          signed and per-user, so it does not require administrator rights. If
+          WebView2 is missing, the installer downloads the bootstrapper and
+          therefore needs an internet connection. SmartScreen may still show a
+          reputation warning for a new publisher or file.
 
           ### Notes
 
@@ -533,8 +579,7 @@ jobs:
             need manual verification on Windows 10/11.
           - The Arch package metadata is validated in CI, but a full
             `makepkg -si` build should be checked before submitting to the AUR.
-          - The Windows installer and the Linux packages are not signed with a
-            repository key.
+          - Linux packages are not signed with a repository key.
           - Breathe never blocks the screen. Reminders are ordinary
             notifications.
           EOF
