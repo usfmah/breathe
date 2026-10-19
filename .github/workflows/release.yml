@@ -186,7 +186,7 @@ jobs:
       - name: Check version consistency
         env:
           TAG: ${{ github.ref_name }}
-        run: npm run check:version "$TAG"
+        run: node scripts/check-version.mjs $env:TAG
 
       - name: Run frontend tests
         run: npm test
