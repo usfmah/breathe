@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal surface for the Breathe frontend. All privileged work (notifications, persistence, autostart, window lifecycle) happens in Rust commands, so the webview is only granted window dragging plus the default core IPC surface.",
+  "windows": ["main", "settings"],
+  "permissions": ["core:default", "core:window:allow-start-dragging"]
+}

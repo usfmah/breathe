@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/* Theme is driven explicitly by a data attribute, never by a media query, so
+   that "Follow System" and the Light/Dark overrides all resolve through one
+   code path. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #fbf8f2;
+  --app-bg-elevated: #fdfcf9;
+  --surface: #ffffff;
+  --surface-muted: #f4f0e7;
+  --surface-hover: #efeade;
+  --fg: #212823;
+  --fg-muted: #616b62;
+  --fg-subtle: #8a938b;
+  --line: #e8e3d7;
+  --line-strong: #d8d2c3;
+  --accent: #527a5d;
+  --accent-hover: #466b51;
+  --accent-fg: #fdfcf9;
+  --accent-soft: #e6efe2;
+  --accent-soft-fg: #3c5c46;
+  --arc: #6b9474;
+  --arc-tail: #9dbfa4;
+  --track: #e9e6dc;
+  --danger: #a4504a;
+  --focus: #4d7a5b;
+  --shadow: 32 28 18;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --app-bg: #191e1c;
+  --app-bg-elevated: #1e2422;
+  --surface: #222927;
+  --surface-muted: #262e2b;
+  --surface-hover: #2c3531;
+  --fg: #e9ece6;
+  --fg-muted: #9aa59c;
+  --fg-subtle: #7b867d;
+  --line: #2e3733;
+  --line-strong: #3c4641;
+  --accent: #7fa98c;
+  --accent-hover: #8db89a;
+  --accent-fg: #131f18;
+  --accent-soft: #29352d;
+  --accent-soft-fg: #b6d3be;
+  --arc: #82ae8f;
+  --arc-tail: #5c7f67;
+  --track: #2f3834;
+  --danger: #d08a80;
+  --focus: #8db89a;
+  --shadow: 0 0 0;
+}
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Cantarell", "Inter",
+    "Noto Sans", "Segoe UI", sans-serif;
+
+  --color-app: var(--app-bg);
+  --color-app-elevated: var(--app-bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-hover: var(--surface-hover);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-fg: var(--accent-soft-fg);
+  --color-danger: var(--danger);
+  --color-track: var(--track);
+
+  --radius-xl2: 1.125rem;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    background: var(--app-bg);
+  }
+
+  body {
+    margin: 0;
+    background: var(--app-bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+    /* A desktop window, not a document: no text selection by default. */
+    user-select: none;
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Numerals should never jitter while counting down. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer utilities {
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  /* Children of a drag region must not swallow the pointer event, otherwise
+     Tauri's drag-region hit test misses them. */
+  .drag-region > * {
+    pointer-events: none;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    pointer-events: auto;
+  }
+
+  .scroll-block {
+    overscroll-behavior: contain;
+  }
+}
+
+/* Slim, quiet scrollbar for the settings pane. */
+.settings-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.settings-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
