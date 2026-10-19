@@ -17,20 +17,31 @@ and DEB are the recommended packages; the AppImage is a convenience artifact.
 | Check | Where it runs | Status |
 | --- | --- | --- |
 | Linux package builds (RPM/DEB/AppImage) | GitHub Actions CI, `ubuntu-22.04` | Passed on 2026-10-19 |
+| RPM install and launch (Fedora 44 build) | Fedora 44 container under Xvfb | Passed during packaging work |
+| DEB install and launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed during packaging work |
+| DEB install and launch (Fedora 44 build) | Ubuntu 24.04 and Debian 12 containers under Xvfb | Passed on Ubuntu 24.04; fails on Debian 12 with a `GLIBC_2.39` symbol error, as expected for a newer build host |
+| AppImage launch (Ubuntu 22.04 build) | Ubuntu 22.04, Ubuntu 24.04 and Fedora 44 containers under Xvfb | Passed during packaging work |
 | RPM install, dependency resolution and launch | GitHub Actions release workflow, `fedora:44` container under Xvfb | Configured; not run yet (tag-only) |
-| RPM install and launch (local build) | Fedora 44 container under Xvfb | Performed during packaging work |
 | DEB install, dependency resolution and launch | GitHub Actions release workflow, `ubuntu:24.04` and `debian:12` containers under Xvfb | Configured; not run yet (tag-only) |
-| DEB install and launch on Ubuntu 24.04 | Clean Docker container under Xvfb | Performed with the local Fedora build |
-| DEB install on Debian 12 | Clean Docker container | Installed; launch blocked by the local Fedora build's glibc 2.39. The release build uses Ubuntu 22.04 (glibc 2.35) and will be launched by the release workflow when a tag is pushed. |
 | AppImage launch | GitHub Actions release workflow, Ubuntu 24.04 and Fedora 44 under Xvfb | Configured; not run yet (tag-only) |
 | AUR metadata (`makepkg --printsrcinfo`) | GitHub Actions CI, `archlinux:base-devel` container | Passed on 2026-10-19 |
 | AUR full build/install (`makepkg -si`) | Arch Linux | **Not yet performed here** |
 | Fedora Workstation GNOME / KDE | Real desktop | Not individually re-verified for this release |
 
-The oldest Fedora actually tested is **Fedora 44**. The release packages are
-built on **Ubuntu 22.04**, which sets a glibc floor of **2.35**. Do not claim
-support for an older distribution solely because the glibc version is high
-enough: WebKitGTK 4.1, GTK 3, librsvg and libappindicator must also be available.
+The oldest Fedora actually tested is **Fedora 44**. The oldest Ubuntu runtime
+tested is **Ubuntu 22.04** (glibc 2.35); the Ubuntu 22.04 build also launched on
+Debian 12 (2.36), Ubuntu 24.04 (2.39) and Fedora 44 (2.43). The release packages
+are built on **Ubuntu 22.04**, which sets the documented glibc floor of **2.35**.
+A local Ubuntu 22.04 build referenced GLIBC symbols up to 2.34, but 2.35 remains
+the conservative documented floor because the build image and bundled AppImage
+libraries can change. Do not claim support for an older distribution solely
+because the glibc version is high enough: WebKitGTK 4.1, GTK 3, librsvg and
+libappindicator must also be available.
+
+The workflows deliberately pin `ubuntu-22.04` for that glibc floor. GitHub's
+`ubuntu-22.04` runner image is on a deprecation path; when it is retired, move to
+the oldest available image and re-evaluate the supported distributions rather
+than silently raising the glibc requirement.
 
 ## Build dependencies
 

@@ -51,9 +51,10 @@ all depend on the desktop services that are actually running.
 | --- | --- | --- |
 | Fedora 44 x86_64, niri 26.04, Wayland | RPM | App built and run from source on this host; the RPM was installed and launched under Xvfb in a Fedora 44 container. Oldest Fedora actually tested: **Fedora 44**. |
 | Fedora Workstation / KDE | RPM | The code uses XDG conventions and standard freedesktop services, but these sessions have not been individually re-verified for this release. |
-| Ubuntu 24.04 x86_64 | DEB | A local Fedora-built DEB was installed and launched under Xvfb. The release workflow is configured to install and launch the Ubuntu 22.04-built DEB, which is the artifact intended for older glibc systems. |
-| Debian 12 x86_64 | DEB | A local Fedora-built DEB installed, but could not launch because the local build needs glibc 2.39 (Debian 12 has 2.36). The release workflow uses the Ubuntu 22.04 build (glibc 2.35) and is configured to launch it on Debian 12. |
-| Linux x86_64 | AppImage | A locally built Fedora artifact launched on Fedora 44 but is not portable to older glibc. The release workflow is configured to build on Ubuntu 22.04 (glibc 2.35) and launch the result under Xvfb on Ubuntu 24.04 and Fedora 44. |
+| Ubuntu 22.04 x86_64 | DEB / AppImage | An Ubuntu 22.04-built DEB and AppImage both installed and/or launched under Xvfb. This is the oldest glibc runtime tested (2.35). |
+| Ubuntu 24.04 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb; the local Fedora-built DEB also launched. The release workflow is configured to repeat this check for the tagged artifact. |
+| Debian 12 x86_64 | DEB | An Ubuntu 22.04-built DEB installed and launched under Xvfb. The local Fedora-built DEB installs but cannot launch because it needs glibc 2.39 (Debian 12 has 2.36). |
+| Linux x86_64 | AppImage | An Ubuntu 22.04-built AppImage launched under Xvfb on Ubuntu 22.04, Ubuntu 24.04 and Fedora 44. A Fedora-built local AppImage launched on Fedora 44 but is not portable to older glibc. The release workflow is configured to repeat the checks for the tagged artifact. |
 | Arch Linux x86_64 | AUR source package | `PKGBUILD`/`.SRCINFO` are validated with `makepkg --printsrcinfo` in an Arch container. A full `makepkg -si` build is not yet exercised in this environment. |
 | Windows 10/11 x64 | NSIS | CI built the MSVC target and passed the silent install/uninstall and autostart-cleanup smoke test on Windows Server 2022 on 2026-10-19. Toast delivery, tray interaction, autostart after reboot, and DPI behaviour still require manual testing on Windows 10/11. |
 
@@ -97,7 +98,7 @@ The release AppImage is built on Ubuntu 22.04. It therefore needs **glibc 2.35
 or newer** and the usual desktop GTK/WebKitGTK base libraries. It bundles the
 application and most of WebKitGTK/GTK, but it is not a fully static container:
 minimal systems may still need packages such as `libfribidi0` and
-`libfontconfig1`. Damn small containers are not the target; a normal desktop is.
+`libfontconfig1`. Minimal containers are not the target; a normal desktop is.
 
 If FUSE 2 is not installed, use the extraction fallback:
 
@@ -121,10 +122,9 @@ The repository also contains the template at [`packaging/aur/`](packaging/aur/).
 Its checksum is intentionally `SKIP` until the release workflow renders the
 pinned release copy. Prefer the release tarball for installation.
 
-The AUR build needs `base-devel`, `rust`, `cargo`, `nodejs`, `npm`, `pkgconf`,
-`git`, `webkit2gtk-4.1`, `gtk3`, `libappindicator` and `librsvg`; these are
-declared in the PKGBUILD. The resulting package runs without the build
-toolchain.
+The AUR build assumes `base-devel` and declares `rust`, `cargo`, `nodejs`, `npm`,
+`pkgconf`, `git`, `webkit2gtk-4.1`, `gtk3`, `libappindicator` and `librsvg`.
+The resulting package runs without the build toolchain.
 
 ### Windows 10/11 x64
 
@@ -286,8 +286,11 @@ and [`.github/workflows/release.yml`](.github/workflows/release.yml).
 The first CI run on `main` (2026-10-19) passed on Linux, Windows Server 2022 and
 the Arch container. The Windows job built the NSIS installer and passed its
 silent install/uninstall smoke test; the Linux job built the RPM, DEB and
-AppImage but did not install them. Installation and launch smoke tests for the
-Linux packages belong to the tag-triggered release workflow and have not run yet.
+AppImage but did not install them. Locally, an Ubuntu 22.04 build launched the
+DEB on Ubuntu 22.04, Ubuntu 24.04 and Debian 12, and the AppImage on Ubuntu
+22.04, Ubuntu 24.04 and Fedora 44. The tag-only release workflow repeats those
+installation and launch checks against the published artifacts; it has not run
+yet.
 
 ## CI and releases
 
@@ -316,10 +319,12 @@ steps are in [`docs/RELEASE.md`](docs/RELEASE.md).
 - **Tray clicks on Linux.** Tauri never emits tray click events on Linux, so the
   menu opens on both left and right click and every action lives in the menu.
   This is a Tauri/AppIndicator limitation.
-- **AppImage portability.** The AppImage is built on Ubuntu 22.04 and inherits
-  its glibc floor (2.35). A locally built AppImage on a newer distribution is
-  only usable on distributions at least as new as the build host. It also relies
-  on base desktop libraries that are not bundled.
+- **AppImage portability.** The AppImage is built on Ubuntu 22.04 and is
+  documented as requiring glibc 2.35 or newer. An Ubuntu 22.04-built AppImage
+  launched locally on Ubuntu 22.04, Ubuntu 24.04 and Fedora 44. A locally built
+  AppImage on a newer distribution is only usable on distributions at least as
+  new as the build host. It also relies on base desktop libraries that are not
+  bundled.
 - **Windows is covered by CI compilation and an installer smoke test, not by
   real-hardware use.** Toast delivery, Focus Assist, tray overflow, autostart
   after a reboot, DPI scaling, and interactive-uninstaller cleanup still need

@@ -180,8 +180,10 @@ dpkg-deb -I Breathe_0.1.0_amd64.deb
 
 The package declares `libwebkit2gtk-4.1-0`, `libgtk-3-0`,
 `libappindicator3-1`, `librsvg2-2`, `libc6`, `libgcc-s1` and `libstdc++6`.
-Ubuntu 24.04 and Debian 12 installed successfully during this work; Ubuntu
-22.04 is the build host but was not separately exercised as a runtime target.
+An Ubuntu 22.04-built DEB installed and launched on Ubuntu 22.04, Ubuntu 24.04
+and Debian 12 during this work. The local Fedora-built DEB launches on Ubuntu
+24.04 but fails on Debian 12 because its binary needs glibc 2.39; the Ubuntu
+22.04 release build targets glibc 2.35.
 
 ### AppImage says FUSE is missing
 

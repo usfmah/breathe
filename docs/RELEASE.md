@@ -15,11 +15,12 @@ The application version must match in all of these files:
 
 ```text
 package.json
+package-lock.json             # root and packages[""] version
 src-tauri/tauri.conf.json
 src-tauri/Cargo.toml          # [package] version only
 ```
 
-The lockfile's root version should match too; it is updated by npm:
+The lockfile's root version must match too; update it with npm:
 
 ```bash
 npm install --package-lock-only --ignore-scripts
