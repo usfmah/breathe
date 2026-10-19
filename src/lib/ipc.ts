@@ -200,8 +200,9 @@ export async function getAutostartStatus(): Promise<AutostartStatus> {
   if (!isTauri()) {
     return {
       enabled: mockSettings.startWithSession,
+      mechanism: "Browser preview",
       entryPath: null,
-      sessionHonorsXdgAutostart: false,
+      sessionReadsStartupEntry: false,
       notes: ["Autostart is only available inside the desktop application."],
     };
   }
@@ -213,8 +214,9 @@ export async function setAutostart(enabled: boolean): Promise<AutostartStatus> {
     mockSettings = { ...mockSettings, startWithSession: enabled };
     return {
       enabled,
+      mechanism: "Browser preview",
       entryPath: null,
-      sessionHonorsXdgAutostart: false,
+      sessionReadsStartupEntry: false,
       notes: ["Autostart is only available inside the desktop application."],
     };
   }

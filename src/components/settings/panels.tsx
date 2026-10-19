@@ -240,14 +240,15 @@ export function RemindersPanel({
             <Note tone="success">
               Notification service: <strong>{notificationStatus.service}</strong>
               {notificationStatus.version ? ` ${notificationStatus.version}` : ""}
-              {notificationStatus.vendor ? ` (${notificationStatus.vendor})` : ""} —
-              freedesktop specification{" "}
-              {notificationStatus.specVersion ?? "1.2"}.
+              {notificationStatus.vendor ? ` (${notificationStatus.vendor})` : ""}.
+              {notificationStatus.specVersion
+                ? ` Freedesktop specification ${notificationStatus.specVersion}.`
+                : " The native notification service is active."}
             </Note>
           ) : (
             <Note tone="warning">
-              No desktop notification service was found on the session bus.
-              Breathe will keep scheduling, but nothing will be shown.
+              No notification service was found. Breathe will keep scheduling,
+              but nothing will be shown.
               {notificationStatus.error ? ` (${notificationStatus.error})` : ""}
             </Note>
           )
@@ -428,6 +429,8 @@ export function StartupPanel({
   onToggleAutostart,
 }: PanelProps) {
   const enabled = autostartStatus?.enabled ?? settings.startWithSession;
+  const windowsStartup = autostartStatus?.mechanism === "Windows Run key";
+  const linuxStartup = autostartStatus?.mechanism === "XDG autostart";
 
   return (
     <>
@@ -454,17 +457,18 @@ export function StartupPanel({
       <div className="mt-4 space-y-2">
         {autostartStatus ? (
           autostartStatus.enabled ? (
-            <Note tone={autostartStatus.sessionHonorsXdgAutostart ? "success" : "warning"}>
-              An XDG autostart entry is installed
+            <Note tone={autostartStatus.sessionReadsStartupEntry ? "success" : "warning"}>
+              Startup integration is enabled via{" "}
+              <strong>{autostartStatus.mechanism}</strong>
               {autostartStatus.entryPath ? (
                 <>
                   {" "}
-                  at <Mono>{autostartStatus.entryPath}</Mono>
+                  (<Mono>{autostartStatus.entryPath}</Mono>)
                 </>
               ) : null}
               .
-              {!autostartStatus.sessionHonorsXdgAutostart
-                ? " This session may not read XDG autostart entries, so check the note below."
+              {!autostartStatus.sessionReadsStartupEntry
+                ? " This session may not read the startup entry, so check the note below."
                 : null}
             </Note>
           ) : (
@@ -479,17 +483,31 @@ export function StartupPanel({
 
       <div className="mt-5 rounded-2xl border border-line bg-surface-muted px-4 py-3.5">
         <h3 className="text-[13px] font-medium text-fg">Removing autostart</h3>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-          Turn the switch off, or delete the desktop entry directly:
-        </p>
-        <p className="mt-2">
-          <Mono>rm ~/.config/autostart/Breathe.desktop</Mono>
-        </p>
-        <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
-          If you instead added Breathe manually, remove the matching{" "}
-          <Mono>spawn-at-startup</Mono> line from{" "}
-          <Mono>~/.config/niri/config.kdl</Mono>.
-        </p>
+        {windowsStartup ? (
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+            Turn the switch off. This removes the per-user Run value from{" "}
+            <Mono>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</Mono> and
+            does not require administrator rights.
+          </p>
+        ) : linuxStartup ? (
+          <>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+              Turn the switch off, or delete the desktop entry directly:
+            </p>
+            <p className="mt-2">
+              <Mono>rm ~/.config/autostart/Breathe.desktop</Mono>
+            </p>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
+              If you instead added Breathe manually, remove the matching{" "}
+              <Mono>spawn-at-startup</Mono> line from{" "}
+              <Mono>~/.config/niri/config.kdl</Mono>.
+            </p>
+          </>
+        ) : (
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+            Startup integration is only available in the desktop app.
+          </p>
+        )}
       </div>
     </>
   );
@@ -536,7 +554,7 @@ export function AboutPanel({ appInfo, onQuit }: PanelProps) {
           <SettingRow
             icon={<PowerIcon className="h-[18px] w-[18px]" />}
             title="Platform"
-            description="Linux-first build. Targeting XDG-compliant desktops on Wayland."
+            description="Native desktop integration for Linux and Windows. Linux uses XDG conventions; Windows uses the system tray and native toast notifications."
             control={
               <span className="text-[12.5px] text-muted">
                 {appInfo?.platform ?? "unknown"}

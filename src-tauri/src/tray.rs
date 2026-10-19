@@ -1,13 +1,15 @@
 //! System tray integration.
 //!
-//! Tauri's Linux tray backend is a StatusNotifierItem on the session bus, so it
-//! only appears if the user's bar hosts one (`org.kde.StatusNotifierWatcher`).
-//! Waybar, KDE, GNOME with the AppIndicator extension, and similar bars do; a
-//! bare Wayland compositor does not provide a bar at all.
+//! Linux uses a StatusNotifierItem on the session bus, so the icon only appears
+//! if the user's bar hosts one (`org.kde.StatusNotifierWatcher`). Waybar, KDE,
+//! GNOME with the AppIndicator extension, and similar bars do; a bare Wayland
+//! compositor does not provide a bar at all.
+//!
+//! Windows uses the native notification-area tray. The same menu is shown on
+//! left and right click, so the controls behave the same on both platforms.
 //!
 //! Tauri's docs are explicit that `TrayIconEvent::Click` is never emitted on
-//! Linux, so every action lives in the right-click menu. The menu is also shown
-//! on left click by default, which is what makes it usable without a click event.
+//! Linux, so every action lives in the menu rather than in a click handler.
 
 use std::sync::Mutex;
 
@@ -110,6 +112,9 @@ pub fn build(app: &AppHandle) -> tauri::Result<TrayHandles> {
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
         .tooltip("Breathe")
+        // Linux ignores this (the StatusNotifierItem host decides), but on
+        // Windows it makes the menu reachable with a left click as well.
+        .show_menu_on_left_click(true)
         .on_menu_event(on_menu_event);
 
     if let Some(icon) = app.default_window_icon().cloned() {

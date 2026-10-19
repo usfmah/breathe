@@ -1,14 +1,23 @@
 //! Optional "start with the user session" support.
 //!
-//! The official `tauri-plugin-autostart` writes an XDG autostart desktop entry,
-//! which is the portable Linux mechanism and keeps the door open for Windows
-//! later. Whether anything actually *reads* that entry is session-dependent, so
-//! this module also reports what the current session will do — bare Wayland
-//! compositors such as niri only honour XDG autostart when a systemd user session
-//! wires up `xdg-desktop-autostart.target`.
+//! The official `tauri-plugin-autostart` writes the platform-native entry: an
+//! XDG desktop file on Linux and a per-user `Run` value on Windows. This module
+//! adds the reporting the plugin does not provide: which mechanism is in use,
+//! whether the current Linux session actually reads XDG entries, and what to do
+//! when it does not.
+//!
+//! Bare Wayland compositors such as niri only honour XDG autostart when a
+//! systemd user session wires up `xdg-desktop-autostart.target`; the notes
+//! returned here tell the user how to add an explicit `spawn-at-startup` line
+//! instead of pretending the toggle worked.
 
+use std::path::Path;
+
+#[cfg(target_os = "linux")]
 use std::fs;
-use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
 use tauri::AppHandle;
@@ -16,11 +25,21 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::model::AutostartStatus;
 
-/// The name the plugin is configured with, in `lib.rs`.
-pub const ENTRY_FILE_NAME: &str = "Breathe.desktop";
-
 /// The argument the autostart entry passes, so the app opens hidden.
 pub const AUTOSTART_FLAG: &str = "--autostart";
+
+#[cfg(target_os = "linux")]
+pub const ENTRY_FILE_NAME: &str = "Breathe.desktop";
+
+#[cfg(target_os = "linux")]
+const MECHANISM: &str = "XDG autostart";
+#[cfg(target_os = "windows")]
+const MECHANISM: &str = "Windows Run key";
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+const MECHANISM: &str = "autostart";
+
+/// Descriptive location shown in the UI on Windows. It is not a filesystem path.
+const WINDOWS_ENTRY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Breathe";
 
 /// Desktop environments that run `~/.config/autostart` themselves.
 const SELF_MANAGING_DESKTOPS: [&str; 11] = [
@@ -38,15 +57,18 @@ const SELF_MANAGING_DESKTOPS: [&str; 11] = [
 ];
 
 pub fn status(app: &AppHandle) -> AutostartStatus {
-    let enabled = app.autolaunch().is_enabled().unwrap_or(false);
-    let entry_path = find_entry();
-    let honors = session_honors_xdg_autostart();
-    let notes = notes(entry_path.as_deref(), honors);
+    let plugin_enabled = app.autolaunch().is_enabled().unwrap_or(false);
+    let detected = detect_entry();
+    let enabled = plugin_enabled || detected.is_some();
+    let entry_path = detected.or_else(|| if enabled { display_entry() } else { None });
+    let reads = session_reads_startup_entry();
+    let notes = notes(entry_path.as_deref(), reads, enabled);
 
     AutostartStatus {
-        enabled: enabled || entry_path.is_some(),
-        entry_path: entry_path.map(|path| path.display().to_string()),
-        session_honors_xdg_autostart: honors,
+        enabled,
+        mechanism: MECHANISM.to_string(),
+        entry_path,
+        session_reads_startup_entry: reads,
         notes,
     }
 }
@@ -69,7 +91,27 @@ pub fn set(app: &AppHandle, enabled: bool) -> Result<AutostartStatus, String> {
     Ok(status(app))
 }
 
-fn notes(entry_path: Option<&Path>, honors_xdg: bool) -> Vec<String> {
+/* -------------------------------------------------------------------------- */
+/* Notes                                                                      */
+/* -------------------------------------------------------------------------- */
+
+#[cfg(target_os = "linux")]
+fn notes(entry_path: Option<&str>, reads: bool, _enabled: bool) -> Vec<String> {
+    linux_notes(entry_path.map(Path::new), reads)
+}
+
+#[cfg(target_os = "windows")]
+fn notes(_entry_path: Option<&str>, _reads: bool, enabled: bool) -> Vec<String> {
+    windows_notes(enabled)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+fn notes(_entry_path: Option<&str>, _reads: bool, _enabled: bool) -> Vec<String> {
+    Vec::new()
+}
+
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn linux_notes(entry_path: Option<&Path>, reads_xdg: bool) -> Vec<String> {
     let mut notes = Vec::new();
 
     if let Some(path) = entry_path {
@@ -79,7 +121,7 @@ fn notes(entry_path: Option<&Path>, honors_xdg: bool) -> Vec<String> {
         ));
     }
 
-    if !honors_xdg {
+    if !reads_xdg {
         notes.push(
             "This session does not appear to read ~/.config/autostart entries. Bare Wayland compositors such as niri only run them when a systemd user session provides xdg-desktop-autostart.target. Add the line below to ~/.config/niri/config.kdl instead:"
                 .to_string(),
@@ -93,14 +135,46 @@ fn notes(entry_path: Option<&Path>, honors_xdg: bool) -> Vec<String> {
     notes
 }
 
-/// True when the current session is expected to launch XDG autostart entries.
-pub fn session_honors_xdg_autostart() -> bool {
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn windows_notes(enabled: bool) -> Vec<String> {
+    if !enabled {
+        return Vec::new();
+    }
+
+    vec![
+        format!(
+            "Breathe is registered under {WINDOWS_ENTRY} and starts hidden in the background."
+        ),
+        "The entry belongs to the current user and does not require administrator rights."
+            .to_string(),
+    ]
+}
+
+/* -------------------------------------------------------------------------- */
+/* Platform reporting                                                         */
+/* -------------------------------------------------------------------------- */
+
+/// True when the current session is expected to launch the startup entry.
+#[cfg(target_os = "linux")]
+pub fn session_reads_startup_entry() -> bool {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
-    honors_xdg_autostart_for(&desktop, systemd_autostart_target_active)
+    reads_startup_entry_for(&desktop, systemd_autostart_target_active)
+}
+
+/// The current-user Run key is read by every Windows session.
+#[cfg(target_os = "windows")]
+pub fn session_reads_startup_entry() -> bool {
+    true
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub fn session_reads_startup_entry() -> bool {
+    false
 }
 
 /// Pure decision logic, so it can be tested without touching the environment.
-fn honors_xdg_autostart_for(
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn reads_startup_entry_for(
     desktop: &str,
     systemd_target_active: impl FnOnce() -> bool,
 ) -> bool {
@@ -122,6 +196,7 @@ fn honors_xdg_autostart_for(
     systemd_target_active()
 }
 
+#[cfg(target_os = "linux")]
 fn systemd_autostart_target_active() -> bool {
     Command::new("systemctl")
         .args(["--user", "is-active", "xdg-desktop-autostart.target"])
@@ -133,6 +208,31 @@ fn systemd_autostart_target_active() -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(target_os = "linux")]
+fn detect_entry() -> Option<String> {
+    find_entry().map(|path| path.display().to_string())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn detect_entry() -> Option<String> {
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn display_entry() -> Option<String> {
+    Some(WINDOWS_ENTRY.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn display_entry() -> Option<String> {
+    None
+}
+
+/* -------------------------------------------------------------------------- */
+/* Linux entry discovery                                                      */
+/* -------------------------------------------------------------------------- */
+
+#[cfg(target_os = "linux")]
 fn config_home() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("XDG_CONFIG_HOME") {
         if !dir.is_empty() {
@@ -142,6 +242,7 @@ fn config_home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config"))
 }
 
+#[cfg(target_os = "linux")]
 fn autostart_dir() -> Option<PathBuf> {
     config_home().map(|dir| dir.join("autostart"))
 }
@@ -149,6 +250,7 @@ fn autostart_dir() -> Option<PathBuf> {
 /// Finds the entry the plugin wrote. It is matched by file name first and by the
 /// running executable's path second, so a renamed or relocated install is still
 /// reported accurately.
+#[cfg(target_os = "linux")]
 fn find_entry() -> Option<PathBuf> {
     let dir = autostart_dir()?;
     let exe = std::env::current_exe().ok();
@@ -184,14 +286,14 @@ mod tests {
 
     #[test]
     fn an_empty_desktop_variable_is_reported_as_no_xdg_support() {
-        assert!(!honors_xdg_autostart_for("", || panic!("must not probe")));
+        assert!(!reads_startup_entry_for("", || panic!("must not probe")));
     }
 
     #[test]
     fn known_desktop_environments_are_trusted_without_probing_systemd() {
         for desktop in ["GNOME", "KDE", "X-Cinnamon", "XFCE", "ubuntu:GNOME"] {
             assert!(
-                honors_xdg_autostart_for(desktop, || panic!("must not probe")),
+                reads_startup_entry_for(desktop, || panic!("must not probe")),
                 "{desktop} runs XDG autostart entries itself"
             );
         }
@@ -199,15 +301,15 @@ mod tests {
 
     #[test]
     fn bare_compositors_depend_on_the_systemd_generator() {
-        assert!(honors_xdg_autostart_for("niri", || true));
-        assert!(!honors_xdg_autostart_for("niri", || false));
-        assert!(honors_xdg_autostart_for("sway", || true));
-        assert!(!honors_xdg_autostart_for("Hyprland", || false));
+        assert!(reads_startup_entry_for("niri", || true));
+        assert!(!reads_startup_entry_for("niri", || false));
+        assert!(reads_startup_entry_for("sway", || true));
+        assert!(!reads_startup_entry_for("Hyprland", || false));
     }
 
     #[test]
-    fn notes_mention_the_autostart_flag_when_an_entry_exists() {
-        let notes = notes(
+    fn linux_notes_mention_the_autostart_flag_when_an_entry_exists() {
+        let notes = linux_notes(
             Some(Path::new("/home/user/.config/autostart/Breathe.desktop")),
             true,
         );
@@ -216,15 +318,33 @@ mod tests {
     }
 
     #[test]
-    fn notes_explain_the_niri_alternative_when_xdg_autostart_is_unavailable() {
-        let notes = notes(None, false);
+    fn linux_notes_explain_the_niri_alternative_when_xdg_autostart_is_unavailable() {
+        let notes = linux_notes(None, false);
         assert_eq!(notes.len(), 2);
         assert!(notes[0].contains("niri"));
         assert!(notes[1].contains("spawn-at-startup"));
     }
 
     #[test]
-    fn no_notes_are_produced_for_a_supported_session() {
-        assert!(notes(None, true).is_empty());
+    fn linux_notes_are_empty_for_a_supported_session() {
+        assert!(linux_notes(None, true).is_empty());
+    }
+
+    #[test]
+    fn windows_notes_identify_the_run_key_when_enabled() {
+        let notes = windows_notes(true);
+        assert_eq!(notes.len(), 2);
+        assert!(notes[0].contains(r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Breathe"));
+        assert!(notes[1].contains("administrator"));
+    }
+
+    #[test]
+    fn windows_notes_are_empty_when_disabled() {
+        assert!(windows_notes(false).is_empty());
+    }
+
+    #[test]
+    fn the_platform_mechanism_is_named() {
+        assert!(!MECHANISM.is_empty());
     }
 }

@@ -26,7 +26,7 @@ host changes; do not assume these results on another machine.
 | rustc | 1.96.0 (Fedora) | Tauri 2.12 requires ≥ 1.90 |
 | cargo | 1.96.0 (Fedora) | **`rustup` is not installed** — use the distro toolchain |
 | rpmbuild / rpm | present | RPM bundling is possible on this host |
-| `git` | present | repository was empty (no commits) at the start of the build |
+| `git` | present | audit recorded before the packaging changes were committed |
 
 ## Native libraries (verified with `pkg-config`)
 
@@ -85,3 +85,23 @@ busctl --user list | grep -i statusnotifier
 
 Both succeeded on this host, so notification delivery and tray integration can be
 verified for real rather than assumed.
+
+## Scope and CI build hosts
+
+This audit covers the **Linux development host** only. It does not prove
+anything about Windows, GNOME, KDE, Debian/Ubuntu desktops, or Arch Linux.
+
+The release/CI packaging matrix is separate:
+
+| Target | Runner / container |
+| --- | --- |
+| Linux RPM/DEB/AppImage build | `ubuntu-22.04` GitHub runner (glibc 2.35 floor) |
+| RPM install smoke test | `fedora:44` container |
+| DEB install smoke test | `ubuntu:24.04` and `debian:12` containers |
+| AppImage launch smoke test | `ubuntu:24.04` and `fedora:44` containers under Xvfb |
+| AUR metadata validation | `archlinux:base-devel` container |
+| Windows NSIS build and install smoke test | `windows-2022` GitHub runner |
+
+A locally built AppImage on Fedora 44 is **not** the release AppImage: it
+inherits Fedora's newer glibc and will not run on older distributions. See
+[`LINUX_PACKAGING.md`](LINUX_PACKAGING.md).

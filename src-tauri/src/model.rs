@@ -203,9 +203,12 @@ impl NotificationStatus {
 #[serde(rename_all = "camelCase")]
 pub struct AutostartStatus {
     pub enabled: bool,
+    /// Platform mechanism, for example "XDG autostart" or "Windows Run key".
+    pub mechanism: String,
     pub entry_path: Option<String>,
-    /// False on sessions that never read `~/.config/autostart`.
-    pub session_honors_xdg_autostart: bool,
+    /// False on Linux sessions that never read `~/.config/autostart`. Always
+    /// true on Windows, where the per-user Run key is part of the platform.
+    pub session_reads_startup_entry: bool,
     pub notes: Vec<String>,
 }
 

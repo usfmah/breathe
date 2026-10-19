@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["rpm", "deb", "appimage"],
+    "linux": {
+      "rpm": {
+        "epoch": 0,
+        "release": "1",
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3",
+          "libappindicator-gtk3",
+          "librsvg2",
+          "glibc",
+          "libgcc",
+          "libstdc++"
+        ]
+      },
+      "deb": {
+        "depends": [
+          "librsvg2-2",
+          "libc6",
+          "libgcc-s1",
+          "libstdc++6"
+        ]
+      }
+    }
+  }
+}

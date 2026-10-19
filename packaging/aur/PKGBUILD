@@ -1,0 +1,64 @@
+# Maintainer: Yousuf Mahmoud <usfmah@users.noreply.github.com>
+#
+# Source package. The release workflow publishes Breathe-<version>-source.tar.gz
+# and a release-ready copy of this file with a real sha256sum. The placeholder
+# below is replaced by scripts/render-aur.mjs for the published AUR tarball.
+pkgname=breathe
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Calm movement and eye-rest reminders"
+arch=('x86_64')
+url="https://github.com/usfmah/breathe"
+license=('MIT')
+depends=(
+  'webkit2gtk-4.1'
+  'gtk3'
+  'libappindicator'
+  'librsvg'
+  'glibc'
+  'gcc-libs'
+)
+makedepends=(
+  'rust'
+  'cargo'
+  'nodejs'
+  'npm'
+  'pkgconf'
+  'git'
+)
+provides=("$pkgname")
+conflicts=("$pkgname-bin")
+options=('!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/Breathe-$pkgver-source.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  npm ci --no-audit --no-fund
+  npm run build
+  cargo build --release --locked --manifest-path src-tauri/Cargo.toml
+}
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  npm test
+  cargo test --locked --manifest-path src-tauri/Cargo.toml
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 src-tauri/target/release/breathe "$pkgdir/usr/bin/breathe"
+  install -Dm644 packaging/Breathe.desktop "$pkgdir/usr/share/applications/Breathe.desktop"
+
+  install -Dm644 src-tauri/icons/32x32.png \
+    "$pkgdir/usr/share/icons/hicolor/32x32/apps/breathe.png"
+  install -Dm644 src-tauri/icons/128x128.png \
+    "$pkgdir/usr/share/icons/hicolor/128x128/apps/breathe.png"
+  install -Dm644 src-tauri/icons/128x128@2x.png \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/breathe.png"
+  install -Dm644 src-tauri/icons/icon.png \
+    "$pkgdir/usr/share/icons/hicolor/512x512/apps/breathe.png"
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

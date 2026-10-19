@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories=Utility;
+Comment=Calm movement and eye-rest reminders
+Exec=breathe
+StartupWMClass=breathe
+Icon=breathe
+Name=Breathe
+Terminal=false
+Type=Application

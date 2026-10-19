@@ -9,10 +9,10 @@ src-tauri/src/
   scheduler.rs      the authoritative state machine (+ tests)
   clock.rs          Clock trait so the scheduler can be tested without waiting
   commands.rs       the entire IPC surface, window lifecycle, tray helpers
-  notify.rs         freedesktop notification delivery and a real pre-flight
+  notify.rs         platform-isolated notification status/delivery
   settings_store.rs load/save settings (never the countdown)
-  autostart.rs      XDG autostart + a session compatibility probe
-  tray.rs           StatusNotifierItem + menu
+  autostart.rs      platform-isolated startup integration (XDG / Windows Run key)
+  tray.rs           tray menu (StatusNotifierItem on Linux, notification area on Windows)
   theme.rs          window labels, theme preference → Tauri theme
 src/
   App.tsx           routes on the Tauri window label
@@ -98,27 +98,113 @@ so they stay in sync without polling.
 
 ## Notifications
 
-`notify::deliver` uses `tauri-plugin-notification`, but first performs a real
-`GetServerInformation` round trip through `notify_rust`. This is necessary
-because on Linux the plugin dispatches on a background task and returns
-`Ok(())` before the daemon answers — without the pre-flight the UI would claim
-success on a desktop that has no notification service.
+`notify.rs` is split by target platform. Both paths use
+`tauri-plugin-notification` for delivery.
+
+**Linux:** before dispatching, `deliver` performs a real
+`GetServerInformation` round trip through `notify_rust`. The plugin dispatches
+on a background task and returns `Ok(())` before the daemon answers; without the
+pre-flight the UI would claim success on a desktop with no notification service.
+If the pre-flight finds a daemon but the direct delivery fails, the plugin is
+used as a fallback and its error is returned to the UI.
+
+**Windows:** delivery goes straight through the plugin's native toast backend.
+The status reports the Windows toast platform. The plugin dispatches toast
+delivery asynchronously; it can report a preparation error, but Windows can also
+suppress a toast (for example with Focus Assist) without returning one. The
+plugin sets the application identity only when the app is not running from
+`target/debug` or `target/release`, so installed builds have proper toast
+attribution while development runs may not.
 
 The notification carries no actions, no custom sound and no icon hint beyond the
-app icon, so it degrades gracefully on daemons that do not support them.
+app icon, so it degrades gracefully where those are unsupported.
+
+## Autostart
+
+`autostart.rs` reports a platform-neutral `AutostartStatus`:
+
+| Field | Meaning |
+| --- | --- |
+| `enabled` | The plugin currently has a startup entry. |
+| `mechanism` | Human-readable mechanism, e.g. `XDG autostart` or `Windows Run key`. |
+| `entry_path` | Linux desktop-entry path, or the Windows Run-key location. |
+| `session_reads_startup_entry` | Linux session probe; always true on Windows. |
+| `notes` | Platform/session-specific guidance. |
+
+**Linux** writes `~/.config/autostart/Breathe.desktop` through the autostart
+plugin. A small probe recognizes sessions (notably niri) that do not read XDG
+autostart entries and emits a note suggesting a compositor-specific launch line
+instead.
+
+**Windows** writes a per-user value under
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; no administrator rights
+are needed. The entry launches the app with `--autostart`, which starts hidden.
+There is no session probe to perform.
+
+The Settings UI renders `mechanism` and only shows Linux-specific removal
+instructions when the mechanism is the XDG one.
 
 ## Tray
 
-Tauri never emits `TrayIconEvent::Click` on Linux, so every action lives in the
-menu. The menu is rebuilt only when a label or enabled state actually changes;
-the 500 ms tick therefore does not produce two D-Bus messages per second.
+The menu is rebuilt only when a label or enabled state actually changes; the
+500 ms tick therefore does not produce two D-Bus messages per second.
+
+On Linux the tray is a StatusNotifierItem and Tauri never emits
+`TrayIconEvent::Click`, so every action lives in the menu. On Windows the menu is
+shown on left click as well as right click (`show_menu_on_left_click(true)`), and
+the same actions are available. Without a StatusNotifierItem host, the Linux app
+still runs; only the tray menu is missing.
+
+## Platform configuration
+
+The common Tauri configuration is `src-tauri/tauri.conf.json`. Platform bundle
+metadata is isolated:
+
+| File | Contents |
+| --- | --- |
+| `src-tauri/tauri.linux.conf.json` | RPM/DEB/AppImage targets, Fedora/Debian dependency names |
+| `src-tauri/tauri.windows.conf.json` | NSIS target, `currentUser`, WebView2 bootstrapper, bundled VC runtime, NSIS languages |
+
+The Windows bundle uses `icons/icon.ico`; Linux uses the PNG sizes. The app
+identifier stays `dev.breathe.app` on both platforms so settings paths and the
+wire format do not change.
+
+## Packaging and versioning
+
+- `scripts/check-version.mjs` checks `package.json`,
+  `package-lock.json`, `src-tauri/tauri.conf.json` and the `[package]` version
+  in `src-tauri/Cargo.toml`. It optionally checks a release tag.
+- `scripts/render-aur.mjs` renders the release copy of the AUR files with the
+  real SHA-256 of the generated source tarball. The repository copy uses
+  `sha256sums=('SKIP')` until a release exists.
+- `.github/workflows/ci.yml` builds and tests on Linux and Windows, builds the
+  Linux/NSIS packages, validates the AUR metadata, and never publishes.
+- `.github/workflows/release.yml` runs on `v*` tags, smoke-tests installs, and
+  publishes the release with `GITHUB_TOKEN`.
+
+The release build host is Ubuntu 22.04, which keeps the glibc floor at 2.35.
+Do not publish an AppImage built on a newer host as the release artifact; it
+will not run on older distributions.
 
 ## Testing
 
 - `cargo test --manifest-path src-tauri/Cargo.toml` — scheduler, model,
-  validation and settings round-trips.
+  validation, settings round-trips, plus Linux and Windows unit tests for the
+  notification and autostart reporting helpers.
 - `npm test` — presentation mapping and React components with Testing Library.
 - `npm run typecheck` — strict TypeScript for the app and the Vite config.
+- `npm run check:version` — keeps `package.json`, `package-lock.json`,
+  `tauri.conf.json` and `Cargo.toml` in lockstep.
+- `npm run tauri build -- --bundles rpm,deb,appimage` — Linux package build.
+- `npm run tauri build -- --bundles nsis` — Windows installer build.
+
+`cargo test` compiles `tauri::generate_context!`, so `dist/` must exist. CI runs
+`npm run build` before `cargo test` for that reason.
+
+The Rust tests are not a substitute for a real desktop: they cannot prove that a
+notification daemon displays a toast, that a Windows toast has the right
+identity, or that a tray icon appears. Those are manual checks (and, for Linux
+package installation, release-workflow smoke tests).
 
 Interactive checks on a real desktop (used while developing):
 

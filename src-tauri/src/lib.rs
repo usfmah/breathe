@@ -200,8 +200,7 @@ pub fn run() {
                 Ok(handles) => app.state::<AppState>().install_tray(handles),
                 Err(error) => eprintln!(
                     "[breathe] system tray unavailable: {error}\n\
-                     \x20        This is expected when the session has no StatusNotifierItem \
-                     host. The window and notifications still work; use Quit from Settings."
+                     \x20        The window and notifications still work; use Quit from Settings."
                 ),
             }
 

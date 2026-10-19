@@ -63,15 +63,30 @@ pub fn get_app_info(app: AppHandle) -> AppInfo {
                     .to_string()
             }),
         tauri_version: tauri::VERSION.to_string(),
-        platform: format!(
-            "{} · {} · {}",
-            std::env::consts::OS,
-            env_or("XDG_SESSION_TYPE", "unknown session"),
-            env_or("XDG_CURRENT_DESKTOP", "unknown desktop"),
-        ),
+        platform: platform_label(),
     }
 }
 
+/// Linux reports the session type and desktop because notifications and startup
+/// behaviour depend on them. Windows only needs the OS and architecture: the
+/// toast platform and per-user Run key are part of the OS.
+fn platform_label() -> String {
+    #[allow(unused_mut)]
+    let mut label = format!("{} · {}", std::env::consts::OS, std::env::consts::ARCH);
+
+    #[cfg(target_os = "linux")]
+    {
+        label.push_str(&format!(
+            " · {} · {}",
+            env_or("XDG_SESSION_TYPE", "unknown session"),
+            env_or("XDG_CURRENT_DESKTOP", "unknown desktop"),
+        ));
+    }
+
+    label
+}
+
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn env_or(key: &str, fallback: &str) -> String {
     std::env::var(key)
         .ok()

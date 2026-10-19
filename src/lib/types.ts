@@ -55,9 +55,11 @@ export interface NotificationStatus {
 
 export interface AutostartStatus {
   enabled: boolean;
+  /** Platform mechanism, for example "XDG autostart" or "Windows Run key". */
+  mechanism: string;
   entryPath: string | null;
-  /** False on sessions that never read XDG autostart entries. */
-  sessionHonorsXdgAutostart: boolean;
+  /** False on Linux sessions that never read XDG autostart entries. */
+  sessionReadsStartupEntry: boolean;
   notes: string[];
 }
 
