@@ -4,7 +4,7 @@
 # and a release-ready copy of this file with a real sha256sum. The placeholder
 # below is replaced by scripts/render-aur.mjs for the published AUR tarball.
 pkgname=breathe
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Calm movement and eye-rest reminders"
 arch=('x86_64')

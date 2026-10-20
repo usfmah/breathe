@@ -17,7 +17,7 @@ your system.
 Download the RPM, then install and launch Breathe:
 
 ```bash
-sudo dnf install ./Breathe-0.1.0-1.x86_64.rpm
+sudo dnf install ./Breathe-0.1.1-1.x86_64.rpm
 breathe
 ```
 
@@ -26,7 +26,7 @@ breathe
 Download the DEB, then install and launch Breathe:
 
 ```bash
-sudo apt install ./Breathe_0.1.0_amd64.deb
+sudo apt install ./Breathe_0.1.1_amd64.deb
 breathe
 ```
 
@@ -36,35 +36,35 @@ The AppImage needs glibc 2.35 or newer and the usual desktop GTK/WebKit
 libraries. Make it executable and run it:
 
 ```bash
-chmod +x Breathe_0.1.0_amd64.AppImage
-./Breathe_0.1.0_amd64.AppImage
+chmod +x Breathe_0.1.1_amd64.AppImage
+./Breathe_0.1.1_amd64.AppImage
 ```
 
 If it reports that FUSE is missing, try:
 
 ```bash
-./Breathe_0.1.0_amd64.AppImage --appimage-extract-and-run
+./Breathe_0.1.1_amd64.AppImage --appimage-extract-and-run
 ```
 
 ### Arch Linux
 
 The release includes build files, but Breathe is not published in the AUR yet.
-Download `Breathe-0.1.0-aur.tar.gz`, extract it, and build the package:
+Download `Breathe-0.1.1-aur.tar.gz`, extract it, and build the package:
 
 ```bash
 mkdir breathe-aur
-tar -xzf Breathe-0.1.0-aur.tar.gz -C breathe-aur
+tar -xzf Breathe-0.1.1-aur.tar.gz -C breathe-aur
 cd breathe-aur
 makepkg -si
 ```
 
 ### Windows 10/11
 
-Download and open `Breathe_0.1.0_x64-setup.exe`. It installs for your user and
+Download and open `Breathe_0.1.1_x64-setup.exe`. It installs for your user and
 does not need administrator rights. If WebView2 is missing, the installer needs
-an internet connection to install it. The v0.1.0 installer is unsigned, so
-Windows may show “Unknown publisher”; only run it if you trust the download
-source.
+an internet connection to install it. The installer is signed with Authenticode,
+but Windows may still show a SmartScreen prompt while the certificate builds
+reputation.
 
 ## What Breathe does
 

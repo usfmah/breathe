@@ -152,13 +152,13 @@ window-rule {
 Install the local file with dependency resolution, not `rpm -i`:
 
 ```bash
-sudo dnf install ./Breathe-0.1.0-1.x86_64.rpm
+sudo dnf install ./Breathe-0.1.1-1.x86_64.rpm
 ```
 
 If a dependency is reported, inspect what the package asks for:
 
 ```bash
-rpm -qpR Breathe-0.1.0-1.x86_64.rpm
+rpm -qpR Breathe-0.1.1-1.x86_64.rpm
 dnf repoquery --whatprovides 'libwebkit2gtk-4.1.so.0()(64bit)'
 ```
 
@@ -169,13 +169,13 @@ Fedora actually tested is Fedora 44.
 ### DEB will not install
 
 ```bash
-sudo apt install ./Breathe_0.1.0_amd64.deb
+sudo apt install ./Breathe_0.1.1_amd64.deb
 ```
 
 Inspect the control metadata without installing:
 
 ```bash
-dpkg-deb -I Breathe_0.1.0_amd64.deb
+dpkg-deb -I Breathe_0.1.1_amd64.deb
 ```
 
 The package declares `libwebkit2gtk-4.1-0`, `libgtk-3-0`,
@@ -190,7 +190,7 @@ and Debian 12 during this work. The local Fedora-built DEB launches on Ubuntu
 Install FUSE 2, or bypass it:
 
 ```bash
-./Breathe_0.1.0_amd64.AppImage --appimage-extract-and-run
+./Breathe_0.1.1_amd64.AppImage --appimage-extract-and-run
 ```
 
 On Debian/Ubuntu the package may be `libfuse2` or `libfuse2t64`; on Fedora look
@@ -216,7 +216,7 @@ the repository:
 
 ```bash
 mkdir breathe-aur
-tar -xzf Breathe-0.1.0-aur.tar.gz -C breathe-aur
+tar -xzf Breathe-0.1.1-aur.tar.gz -C breathe-aur
 cd breathe-aur
 makepkg -si
 ```
@@ -284,10 +284,10 @@ installer.
 
 ### SmartScreen warns about an unknown publisher
 
-The published v0.1.0 installer is not code-signed. Verify the download source
-before running it. Future tagged releases require a verified Authenticode
-signature; a signed new publisher can still receive a SmartScreen reputation
-prompt. Do not disable SmartScreen system-wide.
+The v0.1.0 installer was not code-signed. Installers from v0.1.1 onward are
+Authenticode-signed by the release workflow; a newly signed publisher can still
+receive a SmartScreen reputation prompt. Verify the download source and do not
+disable SmartScreen system-wide.
 
 ## Manual verification still required
 

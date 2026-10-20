@@ -1,6 +1,6 @@
 [package]
 name = "breathe"
-version = "0.1.0"
+version = "0.1.1"
 description = "A calm, minimal desktop app that reminds you to move and rest your eyes."
 authors = ["Yousuf Mahmoud <usfmah@users.noreply.github.com>"]
 edition = "2021"
