@@ -1,7 +1,7 @@
 {
   "name": "breathe",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A calm, minimal desktop app that reminds you to move and rest your eyes.",
   "type": "module",
   "license": "MIT",

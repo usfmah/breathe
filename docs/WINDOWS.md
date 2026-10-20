@@ -59,10 +59,10 @@ Tauri's `downloadBootstrapper` mode:
 
 ### SmartScreen and signing
 
-The v0.1.0 installer is **not code-signed**. Windows may show an "Unknown
-publisher" warning. Verify the download source before running it. The release
-workflow now requires a valid, trusted Authenticode signature for Windows
-installers in future releases. A signature identifies the publisher, but
+The v0.1.0 installer was **not code-signed**. Windows may show an "Unknown
+publisher" warning. Verify the download source before running it. From v0.1.1
+onward, tagged release builds require a valid, trusted Authenticode signature.
+A signature identifies the publisher, but
 SmartScreen may still warn until the publisher or new file has enough reputation.
 
 To enable signing for releases, obtain a trusted Windows code-signing
@@ -77,8 +77,8 @@ For example, encode the PFX locally with PowerShell using
 the result into the secret value. Never commit the PFX or its password. Tagged
 release builds sign and timestamp the NSIS installer, verify its Authenticode
 status, and fail before publishing if signing or verification fails. The
-currently published v0.1.0 installer remains unsigned; a new signed release is
-needed before removing its website warning.
+currently published v0.1.0 installer remains unsigned; v0.1.1 and later are
+signed. If no signed release has been published yet, keep this note in place.
 
 There is no auto-updater.
 
@@ -205,8 +205,9 @@ Run this on a clean Windows 10 and a clean Windows 11 machine or VM without
 Node.js, Rust, npm or Cargo installed:
 
 - [ ] The installer runs as a normal user without an administrator prompt.
-- [ ] SmartScreen behaviour is understood and documented for the currently
-      published unsigned v0.1.0 installer.
+- [ ] SmartScreen behaviour is understood and documented for the current
+      signed installer (and the legacy unsigned v0.1.0 assets, where still
+      circulating).
 - [ ] A Start Menu shortcut appears and launches Breathe.
 - [ ] The main window opens and the countdown runs.
 - [ ] Closing the window hides it and the scheduler keeps running.
