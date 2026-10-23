@@ -227,6 +227,31 @@ The first items were verified for v0.1.0. Automation does not replace a desktop:
 - [ ] Confirm a missing-asset/API-failure fallback still points to GitHub Releases
       rather than an unverified file.
 
+### v0.1.1 Windows compatibility pass
+
+On 2026-10-23, the v0.1.1 candidate was built and installed per-user in a Windows
+10 Pro 22H2 x64 VM. The installed app launched; Settings and the hide/minimize
+controls were manually confirmed. The user reported smoother countdown
+animation after matching the ring transition to the 500 ms scheduler snapshots.
+The pause/resume path was corrected to preserve the saved remaining interval,
+and its regression test passes on both Fedora and Windows.
+
+- [x] Windows NSIS installer builds and installs per-user in the VM.
+- [x] Installed Windows app launches in the interactive desktop session.
+- [x] Settings and hide/minimize controls manually work in the VM.
+- [x] Rust regression test covers pausing a 20-minute interval at 18:00 and
+      resuming at 18:00 through the UI's `set_running` path.
+- [ ] Manually confirm pause/resume countdown preservation in the installed
+      Windows app after the final scheduler fix.
+- [ ] Verify Windows toast delivery, tray-menu actions, autostart after reboot,
+      DPI/multi-monitor behavior, and interactive uninstall cleanup.
+- [ ] Configure signing secrets before pushing the release tag; the release
+      workflow intentionally fails rather than publishing an unsigned installer.
+
+The website gets release metadata from GitHub's latest-release API at runtime,
+so it needs no hard-coded version or asset URL change for a new release. Website
+copy changes deploy separately through the Pages workflow on `main`.
+
 ## Signing and trust
 
 - The published v0.1.0 Windows installer is **not code-signed**; Windows may

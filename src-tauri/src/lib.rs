@@ -153,7 +153,8 @@ fn spawn_worker(app: tauri::AppHandle, receiver: Receiver<()>) {
                 }
             }
 
-            commands::emit_snapshot(&app);
+            let snapshot = commands::emit_snapshot(&app);
+            commands::sync_tray(&app, &snapshot);
         });
 
     if let Err(error) = worker {

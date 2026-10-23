@@ -771,7 +771,8 @@ function App() {
               <p>
                 Breathe keeps the countdown in a small window, hides when you close
                 it, and stays available from the tray. You can pause for a meeting,
-                snooze for five minutes, or let the rhythm continue.
+                resume with the time you had left, snooze for five minutes, or let
+                the rhythm continue.
               </p>
               <ul className="check-list">
                 <li><Check aria-hidden="true" /> Choose 20, 30, 45, or 60 minutes</li>
@@ -874,7 +875,7 @@ function App() {
             <SectionIntro
               eyebrow="Requirements and limits"
               title="Honest about what runs where."
-              description="Breathe uses native desktop services. That means the package is only the beginning of the story on Linux, and Windows runtime behavior is still being checked on real hardware."
+              description="Breathe uses native desktop services. Core Windows controls have been checked in a Windows 10 VM; notifications, tray behavior, and device-specific details still need broader testing."
             />
             <div className="requirement-grid">
               <article className="requirement-card">

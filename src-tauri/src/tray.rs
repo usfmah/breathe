@@ -136,9 +136,12 @@ fn on_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
         "pause" => crate::commands::toggle_scheduling(app),
         "snooze" => crate::commands::snooze_from_tray(app),
         "settings" => {
-            if let Err(error) = crate::commands::open_settings_window(app) {
-                eprintln!("[breathe] could not open the settings window: {error}");
-            }
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                if let Err(error) = crate::commands::open_settings_window(&app) {
+                    eprintln!("[breathe] could not open the settings window: {error}");
+                }
+            });
         }
         "quit" => crate::commands::quit(app),
         other => eprintln!("[breathe] ignoring unknown tray action {other}"),

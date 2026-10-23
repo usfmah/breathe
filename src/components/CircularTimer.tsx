@@ -68,7 +68,7 @@ export function CircularTimer({
           strokeDasharray={CIRCUMFERENCE}
           strokeDashoffset={dashOffset}
           opacity={muted ? 0.4 : 1}
-          style={{ transition: "stroke-dashoffset 700ms linear, opacity 300ms ease" }}
+          style={{ transition: "stroke-dashoffset 500ms linear, opacity 300ms ease" }}
         />
       </svg>
 

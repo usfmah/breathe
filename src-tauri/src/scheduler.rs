@@ -172,6 +172,7 @@ impl<C: Clock> Scheduler<C> {
     pub fn set_running(&mut self, running: bool) {
         match (running, self.state) {
             (true, ScheduleState::Running) | (false, ScheduleState::Paused) => {}
+            (true, ScheduleState::Paused) => self.resume(),
             (true, _) => self.start(),
             (false, _) => {
                 if self.state == ScheduleState::Stopped {
@@ -493,6 +494,23 @@ mod tests {
                 snoozed: false
             })
         );
+    }
+
+    #[test]
+    fn set_running_resumes_the_remaining_time_after_a_pause() {
+        let (clock, mut scheduler) = setup();
+        let mut config = config();
+        config.interval = minutes(20);
+        scheduler.set_config(config);
+        scheduler.start();
+
+        clock.advance(minutes(2));
+        scheduler.set_running(false);
+        assert_eq!(scheduler.snapshot(false).remaining_ms, 18 * 60 * 1000);
+
+        clock.advance(minutes(30));
+        scheduler.set_running(true);
+        assert_eq!(scheduler.snapshot(false).remaining_ms, 18 * 60 * 1000);
     }
 
     #[test]

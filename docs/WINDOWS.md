@@ -18,12 +18,19 @@ step on `windows-2022`:
   uninstall it and check the binary, shortcut, uninstaller and Run value are
   gone.
 
-These are CI checks, not a Windows 10/11 hardware test. **Not verified on real
-Windows hardware yet:** toast delivery and attribution, tray interaction,
-autostart after a reboot, DPI scaling, multi-monitor behaviour, and interactive
-uninstaller cleanup (including the delete-app-data option). A successful build
-or a CI install test is not proof that those runtime behaviours work. Use the checklist below before
-claiming Windows support is complete.
+These are CI checks, not a Windows 10/11 hardware test. On 2026-10-23, the
+v0.1.1 candidate was installed per-user and launched from a Windows 10 Pro 22H2
+x64 VM. Settings and the main window's hide/minimize controls were manually
+confirmed, and the countdown animation was reported smoother after aligning it
+with the scheduler update cadence. The Resume command's saved-time regression
+was fixed and added to the Rust tests; a manual check of that final pause/resume
+fix is still pending.
+
+Still not verified on physical Windows hardware: toast delivery and attribution,
+tray-menu interaction, autostart after reboot, DPI scaling, multi-monitor
+behaviour, interactive uninstaller cleanup (including the delete-app-data
+option), and Windows 11 behavior. Use the checklist below before claiming full
+Windows support.
 
 ## Install
 

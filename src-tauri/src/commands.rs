@@ -209,7 +209,7 @@ pub fn set_autostart(app: AppHandle, enabled: bool) -> Result<AutostartStatus, S
 /// Hides the window that invoked the command. Closing the main window must never
 /// terminate the process — the scheduler keeps running behind the scenes.
 #[tauri::command]
-pub fn hide_window(app: AppHandle, window: WebviewWindow) -> Result<(), String> {
+pub async fn hide_window(app: AppHandle, window: WebviewWindow) -> Result<(), String> {
     let is_main = window.label() == MAIN_WINDOW;
     if is_main {
         app.state::<AppState>().set_hidden(true);
@@ -227,14 +227,14 @@ pub fn hide_window(app: AppHandle, window: WebviewWindow) -> Result<(), String> 
 }
 
 #[tauri::command]
-pub fn minimize_window(window: WebviewWindow) -> Result<(), String> {
+pub async fn minimize_window(window: WebviewWindow) -> Result<(), String> {
     window
         .minimize()
         .map_err(|error| format!("could not minimize the window: {error}"))
 }
 
 #[tauri::command]
-pub fn open_settings(app: AppHandle) -> Result<(), String> {
+pub async fn open_settings(app: AppHandle) -> Result<(), String> {
     open_settings_window(&app)
 }
 
@@ -249,10 +249,10 @@ pub fn quit_app(app: AppHandle) {
 /* Helpers callable from the tray and the worker                              */
 /* -------------------------------------------------------------------------- */
 
-pub fn emit_snapshot(app: &AppHandle) {
+pub fn emit_snapshot(app: &AppHandle) -> Snapshot {
     let snapshot = app.state::<AppState>().snapshot();
-    sync_tray(app, &snapshot);
-    let _ = app.emit(EVENT_SNAPSHOT, snapshot);
+    let _ = app.emit(EVENT_SNAPSHOT, snapshot.clone());
+    snapshot
 }
 
 pub fn show_main_window(app: &AppHandle) {
@@ -401,7 +401,7 @@ fn apply_running(app: &AppHandle, running: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn sync_tray(app: &AppHandle, snapshot: &Snapshot) {
+pub(crate) fn sync_tray(app: &AppHandle, snapshot: &Snapshot) {
     let state = app.state::<AppState>();
     let settings = state.current_settings();
     // Clone the handles and release the app-state lock before scheduling any
@@ -422,21 +422,16 @@ fn sync_tray(app: &AppHandle, snapshot: &Snapshot) {
     let state = snapshot.state;
     let snooze_enabled = settings.snooze_enabled;
     let reminders_enabled = settings.eyes_enabled || settings.movement_enabled;
-    let app = app.clone();
 
-    // MenuItem and tray icon setters marshal synchronously to the main thread.
-    // Run the whole tray refresh there so the scheduler never waits on the UI
-    // thread while holding a lock the UI may need.
-    let _ = app.clone().run_on_main_thread(move || {
-        let tooltip_changed =
-            handles.sync(state, snooze_enabled, reminders_enabled, &tooltip);
+    // Call this from the scheduler worker. Menu setters marshal to the UI
+    // thread and wait, so nesting them inside run_on_main_thread deadlocks.
+    let tooltip_changed = handles.sync(state, snooze_enabled, reminders_enabled, &tooltip);
 
-        if tooltip_changed {
-            if let Some(icon) = app.tray_by_id(crate::tray::TRAY_ID) {
-                let _ = icon.set_tooltip(Some(tooltip));
-            }
+    if tooltip_changed {
+        if let Some(icon) = app.tray_by_id(crate::tray::TRAY_ID) {
+            let _ = icon.set_tooltip(Some(tooltip));
         }
-    });
+    }
 }
 
 fn tooltip_for(snapshot: &Snapshot) -> String {

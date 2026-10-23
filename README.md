@@ -69,7 +69,8 @@ reputation.
 ## What Breathe does
 
 - Alternates between eye-rest and movement reminders when both are enabled.
-- Supports 20, 30, 45, or 60 minute intervals, pause, and five-minute snooze.
+- Supports 20, 30, 45, or 60 minute intervals, pause/resume from the saved
+  remaining time, and five-minute snooze.
 - Includes light, dark, and system themes.
 - Can start with your user session and keeps running when its window is closed.
 
@@ -78,8 +79,9 @@ reputation.
 Breathe supports Linux and Windows on x86_64. Linux tray icons and reminders
 depend on your desktop's tray host and notification service. Release packages
 were smoke-tested on Fedora 44, Ubuntu 24.04, and Debian 12. The Windows
-installer passed CI install/uninstall checks; testing on Windows 10/11 hardware
-is still needed.
+10 Pro x64 VM passed per-user installation, launch, Settings, and window-control
+checks. Notifications, tray-menu actions, autostart, DPI, and Windows 11
+hardware behavior still need testing.
 
 ## Run from source
 
