@@ -66,11 +66,11 @@ Tauri's `downloadBootstrapper` mode:
 
 ### SmartScreen and signing
 
-The v0.1.0 installer was **not code-signed**. Windows may show an "Unknown
-publisher" warning. Verify the download source before running it. From v0.1.1
-onward, tagged release builds require a valid, trusted Authenticode signature.
-A signature identifies the publisher, but
-SmartScreen may still warn until the publisher or new file has enough reputation.
+An unsigned installer may show an "Unknown publisher" or SmartScreen warning.
+Verify the download source before running it. Tagged releases are signed when
+the repository has both signing secrets configured. A signature identifies the
+publisher, but SmartScreen may still warn until the publisher or new file has
+enough reputation.
 
 To enable signing for releases, obtain a trusted Windows code-signing
 certificate (a self-signed certificate does not establish public trust), export
@@ -82,10 +82,10 @@ it as a password-protected PFX, and configure these repository Actions secrets:
 For example, encode the PFX locally with PowerShell using
 `[Convert]::ToBase64String([IO.File]::ReadAllBytes("publisher.pfx"))`, then paste
 the result into the secret value. Never commit the PFX or its password. Tagged
-release builds sign and timestamp the NSIS installer, verify its Authenticode
-status, and fail before publishing if signing or verification fails. The
-currently published v0.1.0 installer remains unsigned; v0.1.1 and later are
-signed. If no signed release has been published yet, keep this note in place.
+release builds sign and timestamp the NSIS installer, then verify its
+Authenticode status. If neither secret is configured, the release is published
+unsigned and labeled as such in its release notes and on the website. If only
+one secret is configured, or signing or verification fails, publication stops.
 
 There is no auto-updater.
 

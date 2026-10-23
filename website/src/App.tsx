@@ -385,6 +385,12 @@ function InstallPanel({
             downloads Microsoft’s bootstrapper, so the first install needs an
             internet connection.
           </p>
+          {selected && !selected.windowsSigned && (
+            <p className="install-note">
+              This Windows installer is unsigned. Windows may show an “Unknown
+              publisher” or SmartScreen warning before it runs.
+            </p>
+          )}
           <InstallAside
             title="What to expect"
             items={[

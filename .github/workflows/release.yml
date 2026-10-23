@@ -150,6 +150,8 @@ jobs:
     name: Windows x64 NSIS
     needs: validate
     runs-on: windows-2022
+    outputs:
+      signed: ${{ steps.sign_installer.outputs.signed }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -210,16 +212,23 @@ jobs:
           $installer = "src-tauri/target/release/bundle/nsis/Breathe_${version}_x64-setup.exe"
           if (-not (Test-Path $installer)) { throw "Missing $installer" }
 
-      - name: Sign Windows installer with Authenticode
+      - name: Sign and verify Windows installer when signing secrets are configured
+        id: sign_installer
         shell: pwsh
         env:
           WINDOWS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE }}
           WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
-          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE) -or
-              [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PASSWORD)) {
-            throw "Windows signing is required. Configure the WINDOWS_SIGNING_CERTIFICATE and WINDOWS_SIGNING_PASSWORD Actions secrets."
+          $hasCertificate = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE)
+          $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PASSWORD)
+          if (-not $hasCertificate -and -not $hasPassword) {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "signed=false"
+            Write-Host "Signing secrets are not configured; continuing with an unsigned installer."
+            exit 0
+          }
+          if (-not $hasCertificate -or -not $hasPassword) {
+            throw "Both WINDOWS_SIGNING_CERTIFICATE and WINDOWS_SIGNING_PASSWORD must be configured to sign the installer."
           }
 
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
@@ -237,22 +246,18 @@ jobs:
             & $signTool sign /fd SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_PASSWORD `
               /tr https://timestamp.digicert.com /td SHA256 /d "Breathe" /v $installer
             if ($LASTEXITCODE -ne 0) { throw "SignTool failed to sign the Windows installer (exit code $LASTEXITCODE)." }
+
+            $signature = Get-AuthenticodeSignature -FilePath $installer
+            if ($signature.Status -ne "Valid") {
+              throw "Installer signature status is '$($signature.Status)': $($signature.StatusMessage)"
+            }
+            if (-not $signature.SignerCertificate) { throw "Installer has no Authenticode signer certificate." }
+            Write-Host "Verified publisher: $($signature.SignerCertificate.Subject)"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "signed=true"
           }
           finally {
             Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
           }
-
-      - name: Verify Authenticode signature
-        shell: pwsh
-        run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $installer = (Resolve-Path "src-tauri/target/release/bundle/nsis/Breathe_${version}_x64-setup.exe").Path
-          $signature = Get-AuthenticodeSignature -FilePath $installer
-          if ($signature.Status -ne "Valid") {
-            throw "Installer signature status is '$($signature.Status)': $($signature.StatusMessage)"
-          }
-          if (-not $signature.SignerCertificate) { throw "Installer has no Authenticode signer certificate." }
-          Write-Host "Verified publisher: $($signature.SignerCertificate.Subject)"
 
       - name: Smoke-test the NSIS installer
         shell: pwsh
@@ -500,9 +505,20 @@ jobs:
       - name: Write release notes
         env:
           TAG: ${{ github.ref_name }}
+          WINDOWS_SIGNED: ${{ needs.windows.outputs.signed }}
         run: |
           set -euo pipefail
           version="${TAG#v}"
+          if [[ "$WINDOWS_SIGNED" == "true" ]]; then
+            signature_status="Authenticode verified."
+            windows_install_note="The installer is Authenticode signed and per-user, so it does not require administrator rights."
+          elif [[ "$WINDOWS_SIGNED" == "false" ]]; then
+            signature_status="unsigned. Windows may show an \"Unknown publisher\" or SmartScreen warning."
+            windows_install_note="The installer is unsigned and per-user, so it does not require administrator rights. Windows may warn before running it."
+          else
+            echo "Windows signing status was not reported by the build job." >&2
+            exit 1
+          fi
           cat > release-notes.md <<'EOF'
           ## Breathe __VERSION__
 
@@ -519,7 +535,7 @@ jobs:
           | Arch Linux | `Breathe-__VERSION__-aur.tar.gz` |
           | Source | `Breathe-__VERSION__-source.tar.gz` |
 
-          Windows installer signature: Authenticode verified.
+          Windows installer signature: __SIGNATURE_STATUS__
 
           ### Install
 
@@ -558,11 +574,9 @@ jobs:
 
           Windows:
 
-          Run `Breathe___VERSION___x64-setup.exe`. The installer is Authenticode
-          signed and per-user, so it does not require administrator rights. If
+          Run `Breathe___VERSION___x64-setup.exe`. __WINDOWS_INSTALL_NOTE__ If
           WebView2 is missing, the installer downloads the bootstrapper and
-          therefore needs an internet connection. SmartScreen may still show a
-          reputation warning for a new publisher or file.
+          therefore needs an internet connection.
 
           ### Notes
 
@@ -584,6 +598,8 @@ jobs:
             notifications.
           EOF
           sed -i "s/__VERSION__/${version}/g" release-notes.md
+          sed -i "s/__SIGNATURE_STATUS__/${signature_status}/" release-notes.md
+          sed -i "s/__WINDOWS_INSTALL_NOTE__/${windows_install_note}/" release-notes.md
 
       - name: Create or update release
         env:

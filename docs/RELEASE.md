@@ -245,8 +245,9 @@ and its regression test passes on both Fedora and Windows.
       Windows app after the final scheduler fix.
 - [ ] Verify Windows toast delivery, tray-menu actions, autostart after reboot,
       DPI/multi-monitor behavior, and interactive uninstall cleanup.
-- [ ] Configure signing secrets before pushing the release tag; the release
-      workflow intentionally fails rather than publishing an unsigned installer.
+- [ ] Configure signing secrets before a release when a signed Windows
+      installer is required. Without both secrets, the release is published
+      unsigned and the release notes and website label it accordingly.
 
 The website gets release metadata from GitHub's latest-release API at runtime,
 so it needs no hard-coded version or asset URL change for a new release. Website
@@ -254,18 +255,19 @@ copy changes deploy separately through the Pages workflow on `main`.
 
 ## Signing and trust
 
-- The published v0.1.0 Windows installer is **not code-signed**; Windows may
-  show an "Unknown publisher" warning.
-- Future Windows releases require the repository Actions secrets
+- Windows installers are unsigned when the signing secrets are absent; Windows
+  may show an "Unknown publisher" or SmartScreen warning. The website and
+  release notes report the signing status for each release.
+- To sign a Windows release, configure both repository Actions secrets:
   `WINDOWS_SIGNING_CERTIFICATE` (base64 password-protected PFX) and
   `WINDOWS_SIGNING_PASSWORD`. CI signs with SHA-256, applies an RFC 3161
-  timestamp, verifies the Authenticode signature, and blocks publication if
-  signing fails. See [`WINDOWS.md`](WINDOWS.md) for setup instructions.
+  timestamp, and verifies the Authenticode signature. A partial or invalid
+  signing configuration fails the release. See [`WINDOWS.md`](WINDOWS.md).
 - Signing identifies a trusted publisher, but SmartScreen reputation warnings
   may continue for new files or publishers until sufficient reputation builds.
 - The RPM and DEB are **not signed** with a repository key. Users install local
   files, so `dnf`/`apt` may ask for confirmation.
 - No auto-update channel is configured.
 
-The v0.1.0 website warning remains until a signed Windows release is published.
-Do not expose signing secrets to workflows triggered by pull requests.
+The website reads the latest release's signing status at runtime. Do not expose
+signing secrets to workflows triggered by pull requests.

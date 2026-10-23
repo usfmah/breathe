@@ -284,10 +284,10 @@ installer.
 
 ### SmartScreen warns about an unknown publisher
 
-The v0.1.0 installer was not code-signed. Installers from v0.1.1 onward are
-Authenticode-signed by the release workflow; a newly signed publisher can still
-receive a SmartScreen reputation prompt. Verify the download source and do not
-disable SmartScreen system-wide.
+An unsigned installer may show an "Unknown publisher" warning. Release notes and
+the website show whether the current Windows installer is signed. Signed builds
+can still receive a SmartScreen reputation prompt. Verify the download source
+and do not disable SmartScreen system-wide.
 
 ## Manual verification still required
 
