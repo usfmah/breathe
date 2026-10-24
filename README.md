@@ -105,3 +105,7 @@ npm run tauri dev
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Credits
+
+Maryam Medhat(@maryamedhatt) — Windows 11 testing and features reports.
