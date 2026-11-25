@@ -411,58 +411,79 @@ function InstallPanel({
   }
 
   if (platform === "macos") {
+    // The DMG ships in releases from 0.2.1 on. Until the latest release has
+    // it, point at the CI build instead of showing a broken download.
+    const dmg = assetFor("macos");
     return (
       <div className="install-panel" role="region" aria-label="macOS installation">
         <div className="install-main">
           <div className="install-heading">
             <div>
-              <h3>macOS 11+ / Preview</h3>
-              <p>Universal Apple silicon and Intel app. Preview build, not yet in the stable release.</p>
+              <h3>macOS 11+</h3>
+              <p>Universal Apple silicon and Intel app, tested on a Mac.</p>
             </div>
-            <span className="release-status release-status--warning">
-              <CircleAlert aria-hidden="true" />
-              Preview — not in stable release
-            </span>
+            {dmg ? (
+              <ReleaseStatus state={state} />
+            ) : (
+              <span className="release-status release-status--warning">
+                <CircleAlert aria-hidden="true" />
+                Not in the latest release yet
+              </span>
+            )}
           </div>
-          <div className="release-action" aria-live="polite">
-            <a
-              className="button button--primary download-button"
-              href={`${REPO_DOCS_URL}/MACOS.md`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Download aria-hidden="true" />
-              macOS preview notes
-            </a>
-            <p className="asset-line">
-              <code>Breathe.app (universal .dmg)</code>
-              <span>Built by CI, not hardware-verified</span>
-            </p>
-            <a className="text-link" href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
-              Stable releases (Linux/Windows) <ArrowUpRight aria-hidden="true" />
-            </a>
-          </div>
+          {dmg || state.status !== "ready" ? (
+            <ReleaseAction state={state} asset={dmg} kind="macOS disk image" />
+          ) : (
+            <div className="release-action" aria-live="polite">
+              <a
+                className="button button--primary download-button"
+                href={`${REPO_DOCS_URL}/MACOS.md`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Download aria-hidden="true" />
+                macOS install notes
+              </a>
+              <p className="asset-line">
+                <code>{names.macos}</code>
+                <span>Built by CI, tested on a Mac</span>
+              </p>
+            </div>
+          )}
           <ol className="install-steps">
-            <li>Download a preview DMG from a successful <code>CI</code> run on GitHub Actions, or build from source.</li>
+            {!dmg && (
+              <li>
+                Download the DMG from a successful <code>CI</code> run on GitHub
+                Actions, or build from source.
+              </li>
+            )}
             <li>Open the DMG and drag Breathe to Applications.</li>
-            <li>On first launch, macOS may block the unsigned app: open <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</li>
+            <li>
+              The app is not signed yet, so macOS blocks the first launch: open{" "}
+              <strong>System Settings → Privacy &amp; Security</strong> and choose{" "}
+              <strong>Open Anyway</strong>.
+            </li>
+            <li>Breathe lives in the menu bar and shows the live countdown there.</li>
           </ol>
           <p className="install-note">
-            macOS support is implemented with public APIs and checked in CI, but it has not been verified on real Mac hardware yet. See the macOS notes for status, limitations, and the verification checklist.
+            macOS support uses only public Apple APIs and has been tested on a
+            Mac. Signing and notarization need an Apple Developer membership
+            and are not set up yet.
           </p>
           <InstallAside
-            title="Preview status"
+            title="What to expect"
             items={[
-              { label: "Package", value: "Universal .dmg (preview)" },
+              { label: "Package", value: names.macos },
               { label: "Minimum macOS", value: "11 Big Sur" },
-              { label: "Stable release", value: "Not included yet" },
-              { label: "Verification", value: "CI-built, not hardware-verified" },
+              { label: "Architectures", value: "Apple silicon + Intel" },
+              { label: "Signing", value: "Unsigned (Open Anyway once)" },
             ]}
           />
         </div>
       </div>
     );
   }
+
 
   if (platform === "fedora") {
     return (
@@ -654,7 +675,7 @@ function App() {
       ? platform === "windows"
         ? "Download for Windows"
         : platform === "macos"
-          ? "See macOS preview"
+          ? "Download for macOS"
           : platform === "fedora"
             ? "Download the RPM"
             : platform === "ubuntu"
@@ -765,7 +786,7 @@ function App() {
             </div>
             <div className="hero-meta">
               <span><CheckCircle2 aria-hidden="true" /> Open source · MIT</span>
-              <span><CheckCircle2 aria-hidden="true" /> Linux & Windows · macOS preview</span>
+              <span><CheckCircle2 aria-hidden="true" /> Linux · Windows · macOS</span>
               <span><CheckCircle2 aria-hidden="true" /> Local settings</span>
             </div>
           </div>
@@ -921,7 +942,7 @@ function App() {
               <div>
                 <h3>Select your platform</h3>
                 <p>
-                  Breathe targets Linux, Windows, and macOS (preview). Choose an
+                  Breathe runs on Linux, Windows, and macOS. Choose an
                   option above for verified downloads and honest compatibility
                   notes.
                 </p>
@@ -943,7 +964,7 @@ function App() {
             <SectionIntro
               eyebrow="Requirements and limits"
               title="Honest about what runs where."
-              description="Breathe uses native desktop services. Core Windows controls have been checked in a Windows 10 VM; macOS support is a public-API preview built in CI but not yet verified on Mac hardware."
+              description="Breathe uses native desktop services. Core Windows controls have been checked in a Windows 10 VM, and macOS has been tested on a Mac."
             />
             <div className="requirement-grid">
               <article className="requirement-card">
@@ -951,26 +972,26 @@ function App() {
                 <h3>Windows 10/11 x64</h3>
                 <p>
                   WebView2 Evergreen Runtime. The installer can fetch it when
-                  missing. Notification permissions and Focus Assist can suppress
-                  reminders.
+                  missing. Reminders use Breathe&apos;s own popup, so Windows
+                  notification settings do not hide them.
                 </p>
               </article>
               <article className="requirement-card">
                 <Apple aria-hidden="true" />
-                <h3>macOS 11+ (preview)</h3>
+                <h3>macOS 11+</h3>
                 <p>
-                  Universal Apple silicon and Intel preview build. Checked in CI,
-                  but not yet verified on real Mac hardware. Unsigned builds
-                  require “Open Anyway” in Privacy &amp; Security.
+                  Universal Apple silicon and Intel build, tested on a Mac. Not
+                  signed yet, so the first launch needs “Open Anyway” in
+                  Privacy &amp; Security.
                 </p>
               </article>
               <article className="requirement-card">
                 <Package aria-hidden="true" />
                 <h3>Fedora / RPM</h3>
                 <p>
-                  Fedora 44 is the oldest tested release. A notification daemon and
-                  a StatusNotifier host are needed for reminders and the tray. The
-                  RPM resolves GTK, WebKitGTK, librsvg and libappindicator.
+                  Fedora 44 is the oldest tested release. Reminders use Breathe&apos;s
+                  own popup; a StatusNotifier host is needed for the tray. The RPM
+                  resolves GTK, WebKitGTK, librsvg and libappindicator.
                 </p>
               </article>
               <article className="requirement-card">

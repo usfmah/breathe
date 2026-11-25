@@ -3,7 +3,7 @@ export const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPOSITORY}`;
 export const GITHUB_RELEASES_URL = `${GITHUB_REPO_URL}/releases`;
 export const LATEST_RELEASE_API = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest`;
 
-export type AssetKey = "windows" | "rpm" | "deb" | "appimage" | "source" | "aur";
+export type AssetKey = "windows" | "macos" | "rpm" | "deb" | "appimage" | "source" | "aur";
 
 export interface ReleaseAsset {
   name: string;
@@ -99,6 +99,7 @@ export function releaseVersion(tagName: string): string | null {
 export function expectedAssetNames(version: string): Record<AssetKey, string> {
   return {
     windows: `Breathe_${version}_x64-setup.exe`,
+    macos: `Breathe_${version}_universal.dmg`,
     rpm: `Breathe-${version}-1.x86_64.rpm`,
     deb: `Breathe_${version}_amd64.deb`,
     appimage: `Breathe_${version}_amd64.AppImage`,
