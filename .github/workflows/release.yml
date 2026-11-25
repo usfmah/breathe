@@ -640,15 +640,15 @@ jobs:
 
           ### What's new
 
-          - Reminders appear in Breathe's own popup, with a soft chime. It
-            never takes focus from what you are typing and never opens the
-            main window.
-          - When a reminder is due, Breathe waits for you: take a three-minute
-            break (the next countdown starts on its own when it ends) or
-            snooze for ten minutes. It never restarts the countdown silently.
-          - English and Arabic, chosen in Settings, with a full right-to-left
-            layout.
-          - "Play a sound" setting, and a tray item for the break.
+          - macOS: a universal (Apple silicon and Intel) disk image for
+            macOS 11 and later, tested on a Mac. The menu bar shows the live
+            countdown, and the reminder popup never takes focus. The app is
+            not signed yet; see the install steps below.
+          - Fixed a startup crash on macOS caused by 16-bit bundle icons. CI
+            now checks every icon.
+          - Fixed a crash when Breathe was launched a second time while the
+            first instance was still starting.
+          - Faster CI: checks run once and packages build in parallel.
 
           ### Downloads
 
