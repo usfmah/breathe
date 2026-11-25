@@ -238,9 +238,10 @@ wire format do not change.
 - `scripts/render-aur.mjs` renders the release copy of the AUR files with the
   real SHA-256 of the generated source tarball. The repository copy uses
   `sha256sums=('SKIP')` until a release exists.
-- `.github/workflows/ci.yml` builds and tests on Linux and Windows, builds the
-  Linux/NSIS packages, builds and checks the website, validates the AUR metadata,
-  and never publishes.
+- `.github/workflows/ci.yml` runs frontend and Rust validation once on Linux
+  (`frontend` and `rust` jobs), then packages the Linux, NSIS and macOS builds
+  in parallel, builds and checks the website, validates the AUR metadata, and
+  never publishes.
 - `.github/workflows/release.yml` runs on `v*` tags, smoke-tests installs, and
   publishes the release with `GITHUB_TOKEN`.
 - `.github/workflows/pages.yml` deploys the static landing page to GitHub Pages
@@ -253,7 +254,7 @@ will not run on older distributions.
 ## Testing
 
 - `cargo test --locked --manifest-path src-tauri/Cargo.toml` — scheduler, model,
-  validation, settings round-trips, plus Linux and Windows unit tests for the
+  validation, settings round-trips, plus unit tests for the Linux and Windows
   notification and autostart reporting helpers.
 - `npm test` — app presentation/component tests and website release-selection
   tests.
@@ -267,8 +268,8 @@ will not run on older distributions.
   build (the final `-- --locked` is forwarded to Cargo).
 - `npm run tauri build -- --bundles nsis -- --locked` — Windows installer build.
 
-`cargo test` compiles `tauri::generate_context!`, so `dist/` must exist. CI runs
-`npm run build` before `cargo test` for that reason.
+`cargo test` compiles `tauri::generate_context!`, so `dist/` must exist. The CI
+builds `dist/` with Vite before Clippy and `cargo test` for that reason.
 
 The Rust tests are not a substitute for a real desktop: they cannot prove that a
 notification daemon displays a toast, that a Windows toast has the right

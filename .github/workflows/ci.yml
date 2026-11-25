@@ -16,11 +16,138 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Single source of truth for the cache keys and the toolchain setup below.
+  RUST_TOOLCHAIN: "1.96.0"
 
+# Validation that does not produce a release artifact runs once, on Linux:
+#   * frontend  – lint, tests, typecheck, version consistency, website build
+#   * rust      – rustfmt, Clippy and the full cargo test suite (all Rust tests
+#                 are platform-agnostic, so one host runs the whole suite)
+# Packaging runs in parallel on Linux, Windows and macOS and only compiles,
+# bundles and verifies its own platform's artifacts.
 jobs:
+  frontend:
+    name: Frontend validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check version consistency
+        run: npm run check:version
+
+      - name: Check bundle icons
+        run: npm run check:icons
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build website
+        run: npm run website:build
+
+      - name: Verify website base path and local assets
+        run: npm run website:check
+
+  rust:
+    name: Rust validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "line-tables-only"
+      CARGO_PROFILE_TEST_DEBUG: "line-tables-only"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10-19
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      # Formatting needs neither system libraries nor the Cargo cache, so it
+      # fails fast before the slow steps below.
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+
+      - name: Cache Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-validation-v2-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-validation-v2-
+
+      # Only the libraries Clippy and the test harness need to compile and link
+      # against. Bundling tools (rpm, patchelf, libfuse2, …) stay in the Linux
+      # packaging job. mold accelerates debug/test linking in this job only.
+      - name: Install Linux compile dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libxdo-dev \
+            libglib2.0-bin \
+            libgtk-3-bin \
+            mold
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci --no-audit --no-fund
+
+      # `tauri::generate_context!` reads `dist/`, so it must exist before Clippy
+      # and `cargo test` compile the crate. Type checking already ran in the
+      # frontend job, so Vite is invoked directly instead of `npm run build`.
+      - name: Build frontend for Rust tests
+        run: ./node_modules/.bin/vite build
+
+      # mold -run is used instead of RUSTFLAGS -fuse-ld=mold because it works
+      # with the gcc 11 driver on ubuntu-22.04 runners.
+      - name: Run Clippy
+        run: mold -run cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Run Rust tests
+        run: mold -run cargo test --locked --manifest-path src-tauri/Cargo.toml
+
   linux:
     name: Linux packages
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,11 +164,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10-19
         with:
-          toolchain: 1.96.0
-          components: rustfmt, clippy
-
-      - name: Check Rust formatting
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -50,9 +173,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-linux-release-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-linux-release-
 
       - name: Install Linux build dependencies
         run: |
@@ -75,38 +198,9 @@ jobs:
             desktop-file-utils
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
-      - name: Check bundle icons
-        run: npm run check:icons
-
-      - name: Check version consistency
-        run: npm run check:version
-
-      - name: Lint frontend
-        run: npm run lint
-
-      - name: Run frontend tests
-        run: npm test
-
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Build frontend (required before cargo test)
-        run: npm run build
-
-      - name: Build website
-        run: npm run website:build
-
-      - name: Verify website base path and local assets
-        run: npm run website:check
-
-      - name: Run Clippy
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-
-      - name: Run Rust tests
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
-
+      # The Tauri CLI runs `npm run build` (typecheck + Vite) itself.
       - name: Build Linux bundles
         run: npm run tauri build -- --bundles rpm,deb,appimage -- --locked
 
@@ -145,6 +239,7 @@ jobs:
   windows:
     name: Windows x64 NSIS
     runs-on: windows-2022
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -161,9 +256,8 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10-19
         with:
-          toolchain: 1.96.0
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: x86_64-pc-windows-msvc
-          components: clippy
 
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -172,34 +266,14 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-windows-release-
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
-      - name: Check bundle icons
-        run: npm run check:icons
-
-      - name: Check version consistency
-        run: npm run check:version
-
-      - name: Run frontend tests
-        run: npm test
-
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Build frontend (required before cargo test)
-        run: npm run build
-
-      - name: Run Clippy
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-
-      - name: Run Rust tests
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
-
+      # The Tauri CLI runs `npm run build` (typecheck + Vite) itself.
       - name: Build NSIS installer
         run: npm run tauri build -- --bundles nsis -- --locked
 
@@ -257,6 +331,7 @@ jobs:
   macos:
     name: macOS universal (unsigned)
     runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -273,9 +348,8 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10-19
         with:
-          toolchain: 1.96.0
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: aarch64-apple-darwin, x86_64-apple-darwin
-          components: clippy
 
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -284,27 +358,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-macos-release-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-rust-${{ env.RUST_TOOLCHAIN }}-macos-release-
 
       - name: Install npm dependencies
-        run: npm ci
-
-      - name: Check bundle icons
-        run: npm run check:icons
-
-      - name: Run frontend tests
-        run: npm test
-
-      - name: Build frontend (required before cargo test)
-        run: npm run build
-
-      - name: Run Clippy
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-
-      - name: Run Rust tests
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+        run: npm ci --no-audit --no-fund
 
       # Unsigned: there is no Developer ID certificate yet, so the bundle is
       # ad-hoc signed by the toolchain and Gatekeeper will ask the user to
@@ -333,6 +392,7 @@ jobs:
   aur:
     name: AUR metadata
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
