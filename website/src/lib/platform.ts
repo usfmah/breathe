@@ -6,7 +6,7 @@ export const INSTALL_PLATFORMS: ReadonlyArray<{
   shortLabel: string;
 }> = [
   { id: "windows", label: "Windows 10/11 x64", shortLabel: "Windows" },
-  { id: "macos", label: "macOS 11+ / Preview", shortLabel: "macOS" },
+  { id: "macos", label: "macOS 11+", shortLabel: "macOS" },
   { id: "fedora", label: "Fedora / RPM", shortLabel: "Fedora" },
   { id: "ubuntu", label: "Ubuntu / Debian / DEB", shortLabel: "Ubuntu / Debian" },
   { id: "arch", label: "Arch Linux / AUR", shortLabel: "Arch" },

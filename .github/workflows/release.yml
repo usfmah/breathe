@@ -607,7 +607,7 @@ jobs:
             10 VM (no focus stealing, automatic restart after a break). The
             installer is smoke-tested on a Windows CI runner; startup after a
             reboot and Windows 11 still need manual verification.
-          - macOS is not part of this release; a preview build is checked in CI.
+          - macOS is not part of this release yet; the CI-built DMG has been tested on a Mac.
           - The Arch package metadata is validated in CI, but a full
             `makepkg -si` build should be checked before submitting to the AUR.
           - Linux packages are not signed with a repository key.
