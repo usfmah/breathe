@@ -6,9 +6,11 @@ Breathe builds for **macOS 11 (Big Sur) and later** as a universal app
 > **Status: tested on a Mac.** The macOS code uses only public Apple APIs and
 > every item in the checklist at the end has been checked on real hardware.
 > An early build panicked during setup because some bundle icons were 16-bit
-> PNGs; that is fixed and `npm run check:icons` now guards it in CI. macOS is
-> not part of a stable release yet: use the DMG from a successful CI run or
-> build from source. The app is not yet signed or notarized (see below).
+> PNGs; that is fixed and `npm run check:icons` now guards it in CI.
+> Releases after 0.2.0 include `Breathe_<version>_universal.dmg`, built,
+> verified and launch-tested by the release workflow; for 0.2.0, use the DMG
+> from a successful CI run or build from source. The app is not yet signed or
+> notarized (see below).
 
 ## What is implemented
 

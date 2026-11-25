@@ -48,6 +48,7 @@ describe("release metadata", () => {
     expect(releaseVersion("release-0.1.0")).toBeNull();
     expect(names).toEqual({
       windows: "Breathe_0.1.0_x64-setup.exe",
+      macos: "Breathe_0.1.0_universal.dmg",
       rpm: "Breathe-0.1.0-1.x86_64.rpm",
       deb: "Breathe_0.1.0_amd64.deb",
       appimage: "Breathe_0.1.0_amd64.AppImage",

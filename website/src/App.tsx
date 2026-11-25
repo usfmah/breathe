@@ -411,58 +411,79 @@ function InstallPanel({
   }
 
   if (platform === "macos") {
+    // The DMG ships in releases from 0.2.1 on. Until the latest release has
+    // it, point at the CI build instead of showing a broken download.
+    const dmg = assetFor("macos");
     return (
       <div className="install-panel" role="region" aria-label="macOS installation">
         <div className="install-main">
           <div className="install-heading">
             <div>
               <h3>macOS 11+</h3>
-              <p>Universal Apple silicon and Intel app, tested on a Mac. Not in a stable release yet.</p>
+              <p>Universal Apple silicon and Intel app, tested on a Mac.</p>
             </div>
-            <span className="release-status release-status--warning">
-              <CircleAlert aria-hidden="true" />
-              Tested on Mac — not in stable release yet
-            </span>
+            {dmg ? (
+              <ReleaseStatus state={state} />
+            ) : (
+              <span className="release-status release-status--warning">
+                <CircleAlert aria-hidden="true" />
+                Not in the latest release yet
+              </span>
+            )}
           </div>
-          <div className="release-action" aria-live="polite">
-            <a
-              className="button button--primary download-button"
-              href={`${REPO_DOCS_URL}/MACOS.md`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Download aria-hidden="true" />
-              macOS install notes
-            </a>
-            <p className="asset-line">
-              <code>Breathe.app (universal .dmg)</code>
-              <span>Built by CI, tested on a Mac</span>
-            </p>
-            <a className="text-link" href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
-              Stable releases (Linux/Windows) <ArrowUpRight aria-hidden="true" />
-            </a>
-          </div>
+          {dmg || state.status !== "ready" ? (
+            <ReleaseAction state={state} asset={dmg} kind="macOS disk image" />
+          ) : (
+            <div className="release-action" aria-live="polite">
+              <a
+                className="button button--primary download-button"
+                href={`${REPO_DOCS_URL}/MACOS.md`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Download aria-hidden="true" />
+                macOS install notes
+              </a>
+              <p className="asset-line">
+                <code>{names.macos}</code>
+                <span>Built by CI, tested on a Mac</span>
+              </p>
+            </div>
+          )}
           <ol className="install-steps">
-            <li>Download the DMG from a successful <code>CI</code> run on GitHub Actions, or build from source.</li>
+            {!dmg && (
+              <li>
+                Download the DMG from a successful <code>CI</code> run on GitHub
+                Actions, or build from source.
+              </li>
+            )}
             <li>Open the DMG and drag Breathe to Applications.</li>
-            <li>On first launch, macOS may block the unsigned app: open <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</li>
+            <li>
+              The app is not signed yet, so macOS blocks the first launch: open{" "}
+              <strong>System Settings → Privacy &amp; Security</strong> and choose{" "}
+              <strong>Open Anyway</strong>.
+            </li>
+            <li>Breathe lives in the menu bar and shows the live countdown there.</li>
           </ol>
           <p className="install-note">
-            macOS support uses only public Apple APIs and has been tested on a Mac. The app is not signed or notarized yet, so macOS asks you to allow it once. See the macOS notes for details.
+            macOS support uses only public Apple APIs and has been tested on a
+            Mac. Signing and notarization need an Apple Developer membership
+            and are not set up yet.
           </p>
           <InstallAside
-            title="macOS status"
+            title="What to expect"
             items={[
-              { label: "Package", value: "Universal .dmg" },
+              { label: "Package", value: names.macos },
               { label: "Minimum macOS", value: "11 Big Sur" },
-              { label: "Stable release", value: "Not included yet" },
-              { label: "Verification", value: "Tested on a Mac" },
+              { label: "Architectures", value: "Apple silicon + Intel" },
+              { label: "Signing", value: "Unsigned (Open Anyway once)" },
             ]}
           />
         </div>
       </div>
     );
   }
+
 
   if (platform === "fedora") {
     return (
@@ -654,7 +675,7 @@ function App() {
       ? platform === "windows"
         ? "Download for Windows"
         : platform === "macos"
-          ? "See macOS install"
+          ? "Download for macOS"
           : platform === "fedora"
             ? "Download the RPM"
             : platform === "ubuntu"

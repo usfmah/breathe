@@ -82,8 +82,9 @@ reputation.
 
 Breathe supports Linux and Windows on x86_64, and macOS 11+ as a universal
 (Apple silicon and Intel) app. The macOS build uses only public Apple APIs and
-has been tested on a Mac; it is not in a stable release yet, so download it from
-CI or build it from source (see [docs/MACOS.md](docs/MACOS.md)). Linux tray icons and reminders
+has been tested on a Mac. Releases after 0.2.0 include an unsigned universal
+DMG; for 0.2.0, use the CI build or build from source (see
+[docs/MACOS.md](docs/MACOS.md)). Linux tray icons and reminders
 depend on your desktop's tray host and notification service. Release packages
 were smoke-tested on Fedora 44, Ubuntu 24.04, and Debian 12. The Windows
 10 Pro x64 VM passed per-user installation, launch, Settings, and window-control

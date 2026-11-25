@@ -309,6 +309,113 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  macos:
+    name: macOS universal DMG (unsigned)
+    needs: validate
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10-19
+        with:
+          toolchain: 1.96.0
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Cache Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Check bundle icons
+        run: npm run check:icons
+
+      - name: Check version consistency
+        env:
+          TAG: ${{ github.ref_name }}
+        run: npm run check:version "$TAG"
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Build frontend (required before cargo test)
+        run: npm run build
+
+      - name: Run Rust tests
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      # Unsigned: no Developer ID certificate yet. The bundle is ad-hoc signed
+      # by the toolchain and Gatekeeper asks the user to allow it once.
+      - name: Build universal app and DMG
+        run: npm run tauri build -- --target universal-apple-darwin --bundles app,dmg -- --locked
+
+      - name: Verify the bundle and DMG
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          bundle="src-tauri/target/universal-apple-darwin/release/bundle"
+          app="$bundle/macos/Breathe.app"
+          dmg="$bundle/dmg/Breathe_${version}_universal.dmg"
+          test -d "$app"
+          test -f "$dmg" || { echo "::error::Missing $dmg"; ls -l "$bundle/dmg"; exit 1; }
+          exe="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents/Info.plist")"
+          lipo -archs "$exe" | tee /dev/stderr | grep -q "x86_64 arm64"
+          /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$app/Contents/Info.plist" | grep -q "^11.0$"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist" | grep -qx "$version"
+          ls "$app"/Contents/Resources/*.icns
+          hdiutil verify "$dmg"
+
+      - name: Smoke-test the DMG
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          dmg="src-tauri/target/universal-apple-darwin/release/bundle/dmg/Breathe_${version}_universal.dmg"
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          trap 'hdiutil detach "$mnt" -force >/dev/null 2>&1 || true' EXIT
+          test -d "$mnt/Breathe.app"
+          cp -R "$mnt/Breathe.app" "$RUNNER_TEMP/Breathe.app"
+          exe="$RUNNER_TEMP/Breathe.app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$RUNNER_TEMP/Breathe.app/Contents/Info.plist")"
+          # The app must survive setup (the 16-bit icon panic killed it here)
+          # and keep running: exit 142 (SIGALRM after 20 s) means it was still alive.
+          set +e
+          perl -e 'alarm 20; exec @ARGV' "$exe"
+          code=$?
+          set -e
+          echo "macOS app exit code: $code"
+          test "$code" -eq 142
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: breathe-macos-dmg
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 7
+
   smoke:
     name: Linux package smoke tests
     needs: linux
@@ -445,7 +552,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: [smoke, windows]
+    needs: [smoke, windows, macos]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -478,7 +585,8 @@ jobs:
             "artifacts/Breathe-${version}-1.x86_64.rpm" \
             "artifacts/Breathe_${version}_amd64.deb" \
             "artifacts/Breathe_${version}_amd64.AppImage" \
-            "artifacts/Breathe_${version}_x64-setup.exe"; do
+            "artifacts/Breathe_${version}_x64-setup.exe" \
+            "artifacts/Breathe_${version}_universal.dmg"; do
             test -f "$artifact" || {
               echo "::error::Missing required artifact: $artifact"
               ls -l artifacts
@@ -528,7 +636,7 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## Breathe __VERSION__
 
-          Calm movement and eye-rest reminders for Linux and Windows.
+          Calm movement and eye-rest reminders for Linux, Windows and macOS.
 
           ### What's new
 
@@ -550,6 +658,7 @@ jobs:
           | Debian / Ubuntu | `Breathe___VERSION___amd64.deb` |
           | Linux AppImage | `Breathe___VERSION___amd64.AppImage` |
           | Windows 10/11 x64 | `Breathe___VERSION___x64-setup.exe` |
+          | macOS 11+ (Apple silicon and Intel) | `Breathe___VERSION___universal.dmg` |
           | Arch Linux | `Breathe-__VERSION__-aur.tar.gz` |
           | Source | `Breathe-__VERSION__-source.tar.gz` |
 
@@ -596,6 +705,13 @@ jobs:
           WebView2 is missing, the installer downloads the bootstrapper and
           therefore needs an internet connection.
 
+          macOS:
+
+          Open `Breathe___VERSION___universal.dmg` and drag Breathe to
+          Applications. The app is not signed or notarized yet, so the first
+          launch is blocked: open System Settings → Privacy & Security, choose
+          "Open Anyway" next to the Breathe message, and confirm.
+
           ### Notes
 
           - On Wayland compositors with layer-shell (niri, Sway, Hyprland, KDE)
@@ -607,7 +723,8 @@ jobs:
             10 VM (no focus stealing, automatic restart after a break). The
             installer is smoke-tested on a Windows CI runner; startup after a
             reboot and Windows 11 still need manual verification.
-          - macOS is not part of this release yet; the CI-built DMG has been tested on a Mac.
+          - macOS: tested on a Mac. The DMG is unsigned and not notarized;
+            the menu bar shows the live countdown.
           - The Arch package metadata is validated in CI, but a full
             `makepkg -si` build should be checked before submitting to the AUR.
           - Linux packages are not signed with a repository key.
@@ -642,6 +759,7 @@ jobs:
             "Breathe_${version}_amd64.deb"
             "Breathe_${version}_amd64.AppImage"
             "Breathe_${version}_x64-setup.exe"
+            "Breathe_${version}_universal.dmg"
             "Breathe-${version}-source.tar.gz"
             "Breathe-${version}-aur.tar.gz"
           )
@@ -665,6 +783,7 @@ jobs:
             "artifacts/Breathe_${version}_amd64.deb" \
             "artifacts/Breathe_${version}_amd64.AppImage" \
             "artifacts/Breathe_${version}_x64-setup.exe" \
+            "artifacts/Breathe_${version}_universal.dmg" \
             "dist/Breathe-${version}-source.tar.gz" \
             "dist/Breathe-${version}-aur.tar.gz" \
             --clobber
