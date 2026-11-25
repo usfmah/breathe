@@ -110,7 +110,8 @@ or D-Bus access (see `src-tauri/capabilities/default.json` — only
 `get_settings`, `get_snapshot`, `get_notification_status`, `get_autostart_status`,
 `get_app_info`, `save_settings`, `pause_reminders`, `resume_reminders`,
 `snooze_reminders` (optional `reminderId`), `take_break` (`reminderId`),
-`get_popup`, `dismiss_popup` (`seq`), `send_test_notification`,
+`get_popup`, `dismiss_popup` (`seq`), `resize_popup` (`height`),
+`send_test_notification`,
 `set_autostart`, `hide_window`, `minimize_window`, `open_settings`, `quit_app`.
 
 `save_settings` validates every field (`SettingsPatch::apply`): the interval is
@@ -133,6 +134,12 @@ Reminders are shown in Breathe's own popup, not an OS notification card.
 - **Window (`popup_window.rs`)**: one hidden, non-focusable, always-on-top,
   transparent window (label `popup`) is created at startup and reused. If it
   cannot be created, reminders fall back to native notifications (below).
+- **Size**: 400 logical pixels wide; the height follows the card. The frontend
+  measures the card (`ResizeObserver`) and calls `resize_popup`, which clamps it
+  to 72–320 px, resizes the window (and the layer surface's size request) and
+  re-places it, so a popup without actions or with a one-line message has no
+  empty band ([#17](https://github.com/usfmah/breathe/issues/17)). Until the
+  first measurement the window is 164 px tall.
 - **Placement** is per platform:
   - Wayland: `libgtk-layer-shell.so.0` is loaded at runtime (≥ 0.7, not a
     package dependency) and the window becomes an *overlay* layer surface

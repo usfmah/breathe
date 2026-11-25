@@ -66,3 +66,22 @@ describe("<PopupCard />", () => {
     expect(screen.queryByRole("button", { name: /Snooze/ })).toBeNull();
   });
 });
+
+describe("popup size (#17)", () => {
+  // The window is sized to the card it measures, so the card must keep its
+  // natural height: stretching it to the window brings the empty band back.
+  it("does not stretch the card to fill the window", () => {
+    const { container } = render(
+      <PopupCard
+        view={{ seq: 8, content: { type: "breakOver", kind: "eyes" } }}
+        snoozeEnabled
+        actions={actions()}
+      />,
+    );
+    const frame = container.querySelector(".popup-frame");
+    const card = screen.getByRole("status");
+    expect(frame?.className).not.toMatch(/\bh-full\b/);
+    expect(card.className).not.toMatch(/\bflex-1\b/);
+    expect(container.querySelector(".mt-auto")).toBeNull();
+  });
+});
