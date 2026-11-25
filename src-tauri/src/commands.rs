@@ -299,17 +299,20 @@ pub fn emit_snapshot(app: &AppHandle) -> Snapshot {
     snapshot
 }
 
+/// Brings the main window back. Safe to call before setup has registered
+/// `AppState` (see `crate::request_show_main_window`): the window is shown,
+/// and the hidden flag and snapshot are updated once the state exists.
 pub fn show_main_window(app: &AppHandle) {
-    let state = app.state::<AppState>();
-    state.set_hidden(false);
-
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
 
-    emit_snapshot(app);
+    if let Some(state) = app.try_state::<AppState>() {
+        state.set_hidden(false);
+        emit_snapshot(app);
+    }
 }
 
 pub fn open_settings_window(app: &AppHandle) -> Result<(), String> {

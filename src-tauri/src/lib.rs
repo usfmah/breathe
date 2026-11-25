@@ -122,6 +122,33 @@ impl AppState {
     }
 }
 
+/// A second launch that arrived before setup finished.
+///
+/// Tauri creates the configured windows (WebView2 can take several seconds on
+/// its first start after an install) before it runs our setup, and the
+/// single-instance plugin is already listening during that time. Launching
+/// Breathe again then reached `show_main_window` before `AppState` existed and
+/// panicked ("state() called before manage()"). The request is remembered here
+/// and honoured at the end of setup instead.
+static SHOW_REQUESTED_BEFORE_SETUP: AtomicBool = AtomicBool::new(false);
+
+/// Handles a second launch: show the window now if setup is done, otherwise
+/// once it is.
+fn request_show_main_window(app: &tauri::AppHandle) {
+    if app.try_state::<AppState>().is_some() {
+        commands::show_main_window(app);
+        return;
+    }
+    SHOW_REQUESTED_BEFORE_SETUP.store(true, Ordering::SeqCst);
+    // Setup may have registered the state between the check and the store;
+    // if so, it may already have read the flag, so act on it here.
+    if app.try_state::<AppState>().is_some()
+        && SHOW_REQUESTED_BEFORE_SETUP.swap(false, Ordering::SeqCst)
+    {
+        commands::show_main_window(app);
+    }
+}
+
 /// True when the app was started by the autostart entry, or explicitly hidden.
 fn launched_hidden() -> bool {
     std::env::args().any(|argument| argument == autostart::AUTOSTART_FLAG || argument == "--hidden")
@@ -223,7 +250,7 @@ pub fn run() {
         // Single instance must be registered first so a second launch is
         // redirected before any other plugin touches the settings store.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            commands::show_main_window(app);
+            request_show_main_window(app);
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -239,7 +266,10 @@ pub fn run() {
             let settings = settings_store::load(&handle);
             app.manage(AppState::new(settings.clone()));
 
-            let launch_hidden = launched_hidden();
+            // A second launch while the windows were being created means the
+            // user is waiting for the window, even if this one was autostarted.
+            let launch_hidden =
+                launched_hidden() && !SHOW_REQUESTED_BEFORE_SETUP.swap(false, Ordering::SeqCst);
             app.state::<AppState>().set_hidden(launch_hidden);
 
             if let Some(window) = app.get_webview_window(theme::MAIN_WINDOW) {
