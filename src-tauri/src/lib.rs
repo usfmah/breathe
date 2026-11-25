@@ -317,6 +317,7 @@ pub fn run() {
             commands::take_break,
             commands::get_popup,
             commands::dismiss_popup,
+            commands::resize_popup,
             commands::send_test_notification,
             commands::set_autostart,
             commands::hide_window,

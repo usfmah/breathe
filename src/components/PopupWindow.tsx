@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { playChime } from "@/lib/chime";
-import { dismissPopup, getPopup, onPopup } from "@/lib/ipc";
+import { dismissPopup, getPopup, onPopup, resizePopup } from "@/lib/ipc";
 import {
   breakActionLabel,
   describePopup,
@@ -37,13 +37,13 @@ export function PopupCard({ view, snoozeEnabled, actions }: PopupCardProps) {
   const KindIcon = copy.kind === "movement" ? MovementIcon : EyeIcon;
 
   return (
-    <div className="popup-frame flex h-full w-full p-2">
+    <div className="popup-frame w-full p-2">
       <section
         key={view.seq}
         role="status"
         aria-live="polite"
         aria-label={copy.title}
-        className="popup-card popup-enter relative flex min-w-0 flex-1 flex-col rounded-[18px] border border-line bg-app px-4 pb-3.5 pt-3.5 shadow-[0_10px_28px_-12px_rgb(var(--shadow)/0.45)]"
+        className="popup-card popup-enter relative flex min-w-0 flex-col rounded-[18px] border border-line bg-app px-4 pb-3.5 pt-3.5 shadow-[0_10px_28px_-12px_rgb(var(--shadow)/0.45)]"
       >
         <div className="flex items-start gap-3">
           <div
@@ -82,7 +82,7 @@ export function PopupCard({ view, snoozeEnabled, actions }: PopupCardProps) {
         </button>
 
         {reminder ? (
-          <div className="mt-auto flex gap-2 pt-3">
+          <div className="mt-3.5 flex gap-2">
             <button
               type="button"
               onClick={() => actions.onTakeBreak(reminder.id)}
@@ -155,19 +155,38 @@ export function PopupWindow({
     };
   }, []);
 
+  // The window follows the card's height (issue #17): a popup without
+  // actions, or with a one-line message, has no empty band under the text.
+  // offsetHeight ignores the entrance animation's transform.
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const report = () => {
+      if (frame.offsetHeight > 0) void resizePopup(frame.offsetHeight);
+    };
+    report();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(report);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [view]);
+
   if (!view) return null;
 
   return (
-    <PopupCard
-      view={view}
-      snoozeEnabled={snoozeEnabled}
-      actions={{
-        onTakeBreak,
-        onSnooze,
-        onDismiss: (seq) => {
-          void dismissPopup(seq);
-        },
-      }}
-    />
+    <div ref={frameRef}>
+      <PopupCard
+        view={view}
+        snoozeEnabled={snoozeEnabled}
+        actions={{
+          onTakeBreak,
+          onSnooze,
+          onDismiss: (seq) => {
+            void dismissPopup(seq);
+          },
+        }}
+      />
+    </div>
   );
 }

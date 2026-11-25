@@ -15,6 +15,8 @@
 //!   monitor under the cursor (top-right on Linux, bottom-right on Windows,
 //!   matching where each platform shows notifications).
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
@@ -26,9 +28,30 @@ use crate::popup::{PopupChange, PopupView};
 pub const POPUP_WINDOW: &str = "popup";
 pub const EVENT_POPUP: &str = "breathe://popup";
 
-/// Logical size of the popup. The card inside is drawn by the frontend.
+/// Logical width of the popup. The card inside is drawn by the frontend.
 pub const POPUP_WIDTH: f64 = 400.0;
+/// Height before the frontend has measured its card (issue #17: the height
+/// now follows the content, so a popup without actions has no empty band).
 pub const POPUP_HEIGHT: f64 = 164.0;
+/// Bounds for the measured height, so a bad value can never produce a
+/// zero-size or screen-filling window.
+const MIN_HEIGHT: f64 = 72.0;
+const MAX_HEIGHT: f64 = 320.0;
+
+/// Current logical height (f64 bits), set from the frontend's measurement.
+static HEIGHT: AtomicU64 = AtomicU64::new(POPUP_HEIGHT.to_bits());
+
+fn current_height() -> f64 {
+    f64::from_bits(HEIGHT.load(Ordering::Relaxed))
+}
+
+/// Clamps and rounds a measured content height to a whole logical pixel.
+fn fit_height(measured: f64) -> f64 {
+    if !measured.is_finite() {
+        return POPUP_HEIGHT;
+    }
+    measured.ceil().clamp(MIN_HEIGHT, MAX_HEIGHT)
+}
 
 /// Gap between the popup and the screen edge, in logical pixels.
 const EDGE_MARGIN: f64 = 16.0;
@@ -39,8 +62,8 @@ pub fn create(app: &AppHandle, language: Language) -> Result<(), String> {
     let window = WebviewWindowBuilder::new(app, POPUP_WINDOW, WebviewUrl::App("index.html".into()))
         .title(crate::i18n::text(language, "window.popup"))
         .inner_size(POPUP_WIDTH, POPUP_HEIGHT)
-        .min_inner_size(POPUP_WIDTH, POPUP_HEIGHT)
-        .max_inner_size(POPUP_WIDTH, POPUP_HEIGHT)
+        .min_inner_size(POPUP_WIDTH, MIN_HEIGHT)
+        .max_inner_size(POPUP_WIDTH, MAX_HEIGHT)
         .resizable(false)
         .maximizable(false)
         .minimizable(false)
@@ -92,6 +115,22 @@ pub fn apply(app: &AppHandle, change: PopupChange) {
     }
 }
 
+/// Fits the window to the card the frontend measured (logical pixels), then
+/// re-places it, since the bottom-anchored Windows popup moves with its
+/// height. A repeated height is a no-op.
+pub fn resize(app: &AppHandle, measured: f64) {
+    let height = fit_height(measured);
+    if HEIGHT.swap(height.to_bits(), Ordering::Relaxed) == height.to_bits() {
+        return;
+    }
+    let Some(window) = app.get_webview_window(POPUP_WINDOW) else {
+        return;
+    };
+    platform::resize(&window, height);
+    let _ = window.set_size(LogicalSize::new(POPUP_WIDTH, height));
+    platform::place(app, &window);
+}
+
 /// Positions the window in a corner of the work area of the monitor under
 /// the cursor, falling back to the primary monitor.
 fn place_in_corner(app: &AppHandle, window: &WebviewWindow, bottom: bool) {
@@ -105,11 +144,13 @@ fn place_in_corner(app: &AppHandle, window: &WebviewWindow, bottom: bool) {
     };
 
     let scale = monitor.scale_factor();
-    let _ = window.set_size(LogicalSize::new(POPUP_WIDTH, POPUP_HEIGHT));
+    let height = current_height();
+    let _ = window.set_size(LogicalSize::new(POPUP_WIDTH, height));
     let area = monitor.work_area();
     let position = corner(
         (area.position.x, area.position.y),
         (area.size.width, area.size.height),
+        height,
         scale,
         bottom,
     );
@@ -117,9 +158,15 @@ fn place_in_corner(app: &AppHandle, window: &WebviewWindow, bottom: bool) {
 }
 
 /// Physical top-left of the popup for a work area, pure for testing.
-fn corner(origin: (i32, i32), size: (u32, u32), scale: f64, bottom: bool) -> PhysicalPosition<i32> {
+fn corner(
+    origin: (i32, i32),
+    size: (u32, u32),
+    logical_height: f64,
+    scale: f64,
+    bottom: bool,
+) -> PhysicalPosition<i32> {
     let width = (POPUP_WIDTH * scale).round() as i32;
-    let height = (POPUP_HEIGHT * scale).round() as i32;
+    let height = (logical_height * scale).round() as i32;
     let margin = (EDGE_MARGIN * scale).round() as i32;
 
     let x = origin.0 + size.0 as i32 - width - margin;
@@ -168,6 +215,21 @@ mod platform {
                 "Wayland without layer-shell, placed by the compositor"
             }
         }
+    }
+
+    /// A layer surface sizes itself from its size request, not from tao's
+    /// geometry, so lower or raise the request with the new height.
+    pub fn resize(window: &WebviewWindow, height: f64) {
+        if !LAYER_SHELL.load(Ordering::Relaxed) {
+            return;
+        }
+        let target = window.clone();
+        let _ = window.run_on_main_thread(move || {
+            if let Ok(gtk_window) = target.gtk_window() {
+                gtk_window.set_size_request(super::POPUP_WIDTH as i32, height as i32);
+                gtk_window.resize(super::POPUP_WIDTH as i32, height as i32);
+            }
+        });
     }
 
     pub fn place(app: &AppHandle, window: &WebviewWindow) {
@@ -226,6 +288,8 @@ mod platform {
         let _ = window.set_decorations(false);
         "positioned in the bottom-right corner"
     }
+
+    pub fn resize(_window: &WebviewWindow, _height: f64) {}
 
     pub fn place(app: &AppHandle, window: &WebviewWindow) {
         super::place_in_corner(app, window, true);
@@ -317,6 +381,12 @@ mod platform {
         "floating, non-activating, top-right"
     }
 
+    /// The system shadow is drawn from the window's shape; refresh it once
+    /// the new size is applied.
+    pub fn resize(window: &WebviewWindow, _height: f64) {
+        with_ns_window(window, |ns_window| ns_window.invalidateShadow());
+    }
+
     pub fn place(app: &AppHandle, window: &WebviewWindow) {
         // The work area already excludes the menu bar and the Dock.
         super::place_in_corner(app, window, false);
@@ -344,6 +414,8 @@ mod platform {
     pub fn prepare(_window: &WebviewWindow) -> &'static str {
         "positioned in the top-right corner"
     }
+
+    pub fn resize(_window: &WebviewWindow, _height: f64) {}
 
     pub fn place(app: &AppHandle, window: &WebviewWindow) {
         super::place_in_corner(app, window, false);
@@ -462,14 +534,14 @@ mod tests {
 
     #[test]
     fn the_popup_sits_in_the_top_right_corner_of_the_work_area() {
-        let position = corner((0, 0), (1920, 1040), 1.0, false);
+        let position = corner((0, 0), (1920, 1040), POPUP_HEIGHT, 1.0, false);
         assert_eq!(position, PhysicalPosition::new(1920 - 400 - 16, 16));
     }
 
     #[test]
     fn windows_uses_the_bottom_right_above_the_taskbar() {
         // A 1080p screen with a 40px taskbar: the work area ends at 1040.
-        let position = corner((0, 0), (1920, 1040), 1.0, true);
+        let position = corner((0, 0), (1920, 1040), POPUP_HEIGHT, 1.0, true);
         assert_eq!(
             position,
             PhysicalPosition::new(1920 - 400 - 16, 1040 - 164 - 16)
@@ -477,20 +549,39 @@ mod tests {
     }
 
     #[test]
+    fn a_shorter_popup_stays_on_the_taskbar_edge() {
+        // Issue #17: a popup without actions is shorter, and on Windows its
+        // bottom edge must stay just above the taskbar.
+        let position = corner((0, 0), (1920, 1040), 120.0, 1.0, true);
+        assert_eq!(
+            position,
+            PhysicalPosition::new(1920 - 400 - 16, 1040 - 120 - 16)
+        );
+    }
+
+    #[test]
+    fn the_measured_height_is_rounded_up_and_bounded() {
+        assert_eq!(fit_height(119.2), 120.0);
+        assert_eq!(fit_height(10.0), MIN_HEIGHT);
+        assert_eq!(fit_height(5000.0), MAX_HEIGHT);
+        assert_eq!(fit_height(f64::NAN), POPUP_HEIGHT);
+    }
+
+    #[test]
     fn placement_scales_with_the_monitor() {
-        let position = corner((0, 0), (3840, 2160), 2.0, false);
+        let position = corner((0, 0), (3840, 2160), POPUP_HEIGHT, 2.0, false);
         assert_eq!(position, PhysicalPosition::new(3840 - 800 - 32, 32));
     }
 
     #[test]
     fn placement_respects_a_secondary_monitor_offset() {
-        let position = corner((1920, 0), (2560, 1440), 1.0, false);
+        let position = corner((1920, 0), (2560, 1440), POPUP_HEIGHT, 1.0, false);
         assert_eq!(position, PhysicalPosition::new(1920 + 2560 - 400 - 16, 16));
     }
 
     #[test]
     fn the_popup_never_leaves_a_tiny_work_area() {
-        let position = corner((100, 50), (200, 100), 1.0, true);
+        let position = corner((100, 50), (200, 100), POPUP_HEIGHT, 1.0, true);
         assert_eq!(position, PhysicalPosition::new(100, 50));
     }
 }

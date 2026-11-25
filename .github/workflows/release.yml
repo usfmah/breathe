@@ -649,6 +649,9 @@ jobs:
           - Fixed a crash when Breathe was launched a second time while the
             first instance was still starting.
           - Faster CI: checks run once and packages build in parallel.
+          - The reminder popup fits its content: no more empty space under
+            the text, most visible on the "break's over" popup and the
+            Settings preview (#17).
 
           ### Downloads
 

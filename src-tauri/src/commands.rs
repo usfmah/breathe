@@ -211,6 +211,13 @@ pub fn get_popup(state: State<'_, AppState>) -> Option<PopupView> {
     state.with_popup(|popup| popup.current())
 }
 
+/// Fits the popup window to the height of the card it renders (logical
+/// pixels), so it never shows an empty band below the content (issue #17).
+#[tauri::command]
+pub fn resize_popup(app: AppHandle, height: f64) {
+    popup_window::resize(&app, height);
+}
+
 /// Hides the popup the user closed. Never answers a reminder: the main window
 /// and tray still offer the break and the snooze.
 #[tauri::command]

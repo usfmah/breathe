@@ -205,6 +205,12 @@ export async function dismissPopup(seq: number): Promise<void> {
   await invoke("dismiss_popup", { seq });
 }
 
+/** Fits the popup window to its card's height in CSS (logical) pixels. */
+export async function resizePopup(height: number): Promise<void> {
+  if (!isTauri()) return;
+  await invoke("resize_popup", { height });
+}
+
 /**
  * Browser preview: `?window=popup&popup=reminder|breakOver|test` renders the
  * popup with sample content for layout work.
