@@ -7,7 +7,6 @@ import type {
   Settings,
   SettingsPatch,
   Snapshot,
-  NotificationStatus,
   TestNotificationResult,
   PopupView,
 } from "./types";
@@ -256,19 +255,6 @@ export async function sendTestNotification(
   return invoke<TestNotificationResult>("send_test_notification", { kind });
 }
 
-export async function getNotificationStatus(): Promise<NotificationStatus> {
-  if (!isTauri()) {
-    return {
-      available: false,
-      service: null,
-      vendor: null,
-      version: null,
-      specVersion: null,
-      error: "Running outside the desktop shell.",
-    };
-  }
-  return invoke<NotificationStatus>("get_notification_status");
-}
 
 export async function getAutostartStatus(): Promise<AutostartStatus> {
   if (!isTauri()) {

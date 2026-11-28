@@ -57,7 +57,6 @@ export function SettingsWindow({ controller }: SettingsWindowProps) {
     onSnooze: () => {
       void controller.snooze();
     },
-    notificationStatus: controller.notificationStatus,
     autostartStatus: controller.autostartStatus,
     autostartBusy: controller.autostartBusy,
     onToggleAutostart: (enabled: boolean) => {
