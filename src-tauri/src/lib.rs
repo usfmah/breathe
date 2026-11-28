@@ -29,7 +29,7 @@ use std::time::{Duration, SystemTime};
 use tauri::Manager;
 
 use clock::SystemClock;
-use model::{ScheduleState, Settings, Snapshot};
+use model::{NotificationStyle, ScheduleState, Settings, Snapshot};
 use popup::{PopupChange, PopupContent, PopupManager};
 use scheduler::{Event, Scheduler, SchedulerConfig, TICK_INTERVAL_MS};
 
@@ -183,7 +183,7 @@ fn spawn_worker(app: tauri::AppHandle, receiver: Receiver<()>) {
 
             match event {
                 Some(Event::ReminderDue { reminder, snoozed }) => {
-                    let delivered = if popup_window::available(&app) {
+                    let delivered = if uses_popup(&app) {
                         show_popup(&app, PopupContent::Reminder { reminder });
                         Ok(())
                     } else {
@@ -204,7 +204,7 @@ fn spawn_worker(app: tauri::AppHandle, receiver: Receiver<()>) {
                     }
                 }
                 Some(Event::BreakEnded { kind }) => {
-                    if popup_window::available(&app) {
+                    if uses_popup(&app) {
                         show_popup(&app, PopupContent::BreakOver { kind });
                     } else if let Err(error) = notify::deliver_break_over(
                         &app,
@@ -231,6 +231,16 @@ fn spawn_worker(app: tauri::AppHandle, receiver: Receiver<()>) {
     if let Err(error) = worker {
         eprintln!("[breathe] could not start the scheduler thread: {error}");
     }
+}
+
+/// True when reminders should go to Breathe's popup: the user chose the
+/// popup and the popup window exists. Otherwise they go to the OS.
+pub(crate) fn uses_popup(app: &tauri::AppHandle) -> bool {
+    app.state::<AppState>()
+        .current_settings()
+        .notification_style
+        == NotificationStyle::Popup
+        && popup_window::available(app)
 }
 
 /// Shows Breathe's popup with `content`, unless that exact reminder is already

@@ -176,8 +176,8 @@ pub fn send_test_notification(
         .or_else(|| app.state::<AppState>().snapshot().next_kind)
         .unwrap_or(ReminderKind::Eyes);
 
-    // The preview goes through the same window as real reminders.
-    if popup_window::available(&app) {
+    // The preview goes through the same path as real reminders.
+    if crate::uses_popup(&app) {
         crate::show_popup(&app, PopupContent::Test { kind: resolved });
         return TestNotificationResult {
             delivered: true,

@@ -38,6 +38,16 @@ pub enum Language {
     Ar,
 }
 
+/// How reminders reach the user: Breathe's own popup, or the operating
+/// system's notifications (a notification centre banner or toast).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum NotificationStyle {
+    #[default]
+    Popup,
+    System,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ReminderKind {
@@ -92,6 +102,8 @@ pub struct Settings {
     pub snooze_enabled: bool,
     /// Whether popups play a short chime.
     pub sound_enabled: bool,
+    /// Where reminders are shown.
+    pub notification_style: NotificationStyle,
     pub language: Language,
     pub theme: ThemePreference,
     pub start_with_session: bool,
@@ -107,6 +119,7 @@ impl Default for Settings {
             movement_enabled: true,
             snooze_enabled: true,
             sound_enabled: true,
+            notification_style: NotificationStyle::Popup,
             language: Language::En,
             theme: ThemePreference::System,
             start_with_session: false,
@@ -136,6 +149,7 @@ pub struct SettingsPatch {
     pub movement_enabled: Option<bool>,
     pub snooze_enabled: Option<bool>,
     pub sound_enabled: Option<bool>,
+    pub notification_style: Option<NotificationStyle>,
     pub language: Option<Language>,
     pub theme: Option<ThemePreference>,
     pub start_with_session: Option<bool>,
@@ -180,6 +194,9 @@ impl SettingsPatch {
         }
         if let Some(value) = self.sound_enabled {
             base.sound_enabled = value;
+        }
+        if let Some(value) = self.notification_style {
+            base.notification_style = value;
         }
         if let Some(value) = self.language {
             base.language = value;
@@ -394,6 +411,7 @@ mod tests {
             movement_enabled: true,
             snooze_enabled: false,
             sound_enabled: false,
+            notification_style: NotificationStyle::System,
             language: Language::Ar,
             theme: ThemePreference::Dark,
             start_with_session: true,
@@ -425,5 +443,19 @@ mod tests {
     fn stopped_state_is_published_as_quit() {
         let json = serde_json::to_string(&ScheduleState::Stopped).expect("serialises");
         assert_eq!(json, "\"quit\"");
+    }
+
+    #[test]
+    fn notification_style_defaults_to_the_popup_and_uses_lowercase_names() {
+        let old: Settings = serde_json::from_str(r#"{"theme":"dark"}"#).expect("deserialises");
+        assert_eq!(old.notification_style, NotificationStyle::Popup);
+        assert_eq!(
+            serde_json::to_string(&NotificationStyle::System).expect("serialises"),
+            r#""system""#
+        );
+        let patch: SettingsPatch =
+            serde_json::from_str(r#"{"notificationStyle":"system"}"#).expect("deserialises");
+        let next = patch.apply(Settings::default()).expect("valid");
+        assert_eq!(next.notification_style, NotificationStyle::System);
     }
 }

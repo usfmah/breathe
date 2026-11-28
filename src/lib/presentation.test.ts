@@ -16,6 +16,7 @@ const settings: Settings = {
   movementEnabled: true,
   snoozeEnabled: true,
   soundEnabled: true,
+  notificationStyle: "popup",
   language: "en",
   theme: "system",
   startWithSession: false,
