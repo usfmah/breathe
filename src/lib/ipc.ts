@@ -41,6 +41,7 @@ let mockSettings: Settings = {
   movementEnabled: true,
   snoozeEnabled: true,
   soundEnabled: true,
+  notificationStyle: "popup",
   // Browser preview only: `?lang=ar` renders the interface in Arabic.
   language:
     typeof window !== "undefined" &&

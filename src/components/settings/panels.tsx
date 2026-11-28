@@ -54,6 +54,8 @@ export interface PanelProps {
   onQuit: () => void;
 }
 
+const NOTIFICATION_STYLES = ["popup", "system"] as const;
+
 function bothDisabled(settings: Settings): boolean {
   return !settings.eyesEnabled && !settings.movementEnabled;
 }
@@ -222,12 +224,39 @@ export function RemindersPanel({
         />
         <SettingRow
           icon={<BellIcon className="h-[18px] w-[18px]" />}
+          title={t("settings.reminders.style.title")}
+          description={
+            settings.notificationStyle === "system"
+              ? t("settings.reminders.style.systemDescription")
+              : t("settings.reminders.style.popupDescription")
+          }
+          control={
+            <SelectField
+              className="w-[190px]"
+              label={t("settings.reminders.style.title")}
+              leadingIcon="none"
+              value={settings.notificationStyle}
+              options={NOTIFICATION_STYLES.map((style) => ({
+                value: style,
+                label: t(`settings.reminders.style.${style}`),
+              }))}
+              onChange={(value) => {
+                if (value === "popup" || value === "system") {
+                  void update({ notificationStyle: value });
+                }
+              }}
+            />
+          }
+        />
+        <SettingRow
+          icon={<BellIcon className="h-[18px] w-[18px]" />}
           title={t("settings.reminders.sound.title")}
           description={t("settings.reminders.sound.description")}
           control={
             <Toggle
               label={t("settings.reminders.sound.title")}
               checked={settings.soundEnabled}
+              disabled={settings.notificationStyle === "system"}
               onChange={(next) => {
                 void update({ soundEnabled: next });
               }}

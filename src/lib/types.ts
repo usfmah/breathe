@@ -42,6 +42,8 @@ export type IntervalMinutes = (typeof INTERVAL_OPTIONS)[number];
 
 export const DEFAULT_INTERVAL_MINUTES: IntervalMinutes = 45;
 
+export type NotificationStyle = "popup" | "system";
+
 export interface Settings {
   intervalMinutes: number;
   eyesEnabled: boolean;
@@ -49,6 +51,8 @@ export interface Settings {
   snoozeEnabled: boolean;
   /** Whether popups play a short chime. */
   soundEnabled: boolean;
+  /** Where reminders appear: Breathe's popup or the system's notifications. */
+  notificationStyle: NotificationStyle;
   language: Language;
   theme: ThemePreference;
   startWithSession: boolean;
