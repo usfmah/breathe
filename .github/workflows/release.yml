@@ -745,9 +745,12 @@ jobs:
           set -euo pipefail
           version="${TAG#v}"
           if gh release view "$TAG" >/dev/null 2>&1; then
+            # A release whose tag was deleted and pushed again turns into a
+            # draft, and GitHub refuses to mark a draft as latest (HTTP 422).
             gh release edit "$TAG" \
               --title "Breathe ${version}" \
               --notes-file release-notes.md \
+              --draft=false \
               --latest
           else
             gh release create "$TAG" \
