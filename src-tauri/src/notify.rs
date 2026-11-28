@@ -1,6 +1,6 @@
 //! Reminder delivery over each platform's native notification service.
 //!
-//! Delivery uses the official `tauri-plugin-notification` on both platforms.
+//! Delivery uses the official `tauri-plugin-notification` on every platform.
 //! Linux needs an extra pre-flight because the plugin dispatches on a background
 //! task and returns `Ok(())` before the daemon has answered, so a missing
 //! notification daemon would otherwise look like success. Windows has no
@@ -8,7 +8,8 @@
 //! OS, so the status describes that platform. The plugin dispatches Windows
 //! toast delivery asynchronously; Focus Assist and notification settings can
 //! suppress a toast without producing an error, so the UI cannot promise that a
-//! reminder was visibly displayed.
+//! reminder was visibly displayed. macOS is the same: Notification Center is
+//! part of the OS, and Focus or per-app settings may hide a banner silently.
 
 use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
@@ -97,6 +98,21 @@ fn windows_status() -> NotificationStatus {
     }
 }
 
+/// The status macOS reports. Notification Center is always present, so there
+/// is nothing to probe; kept outside the `cfg` module so it is unit-tested on
+/// the Linux CI runner as well.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn macos_status() -> NotificationStatus {
+    NotificationStatus {
+        available: true,
+        service: Some("macOS Notification Center".to_string()),
+        vendor: Some("Apple".to_string()),
+        version: None,
+        spec_version: None,
+        error: None,
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod platform {
     use super::*;
@@ -153,15 +169,28 @@ mod platform {
     }
 }
 
-/// Keeps the crate compiling on platforms we do not ship yet (for example a
-/// future macOS build), while still routing through the official plugin.
-#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+#[cfg(target_os = "macos")]
+mod platform {
+    use super::*;
+
+    pub fn status() -> NotificationStatus {
+        macos_status()
+    }
+
+    pub fn deliver(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
+        plugin_deliver(app, title, body)
+    }
+}
+
+/// Keeps the crate compiling on platforms we do not ship, while still routing
+/// through the official plugin.
+#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
 mod platform {
     use super::*;
 
     pub fn status() -> NotificationStatus {
         NotificationStatus::unavailable(
-            "notification status is only implemented for Linux and Windows",
+            "notification status is only implemented for Linux, Windows and macOS",
         )
     }
 
@@ -214,6 +243,16 @@ mod tests {
             status.spec_version.is_none(),
             "Windows must not claim a freedesktop notification spec version"
         );
+        assert!(status.error.is_none());
+    }
+
+    #[test]
+    fn macos_status_reports_notification_center_as_available() {
+        let status = macos_status();
+        assert!(status.available, "macOS always has Notification Center");
+        assert_eq!(status.service.as_deref(), Some("macOS Notification Center"));
+        assert_eq!(status.vendor.as_deref(), Some("Apple"));
+        assert!(status.spec_version.is_none());
         assert!(status.error.is_none());
     }
 }

@@ -86,15 +86,6 @@ export interface PopupView {
   content: PopupContent;
 }
 
-export interface NotificationStatus {
-  available: boolean;
-  service: string | null;
-  vendor: string | null;
-  version: string | null;
-  specVersion: string | null;
-  error: string | null;
-}
-
 export interface AutostartStatus {
   enabled: boolean;
   /** Platform mechanism, for example "XDG autostart" or "Windows Run key". */

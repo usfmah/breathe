@@ -103,8 +103,6 @@
   "settings.reminders.testNote": "يعرض الاختبار النافذة المنبثقة لنوع التذكير القادم، بالمسار نفسه الذي تسلكه التذكيرات الفعلية. أما التأجيل فيجدول تذكيرا واحدا بعد {count} دقائق من الآن.",
   "settings.reminders.testShown": "عرض تذكير تجريبي.",
   "settings.reminders.testFailed": "تعذر عرض التذكير التجريبي. {error}",
-  "settings.reminders.serviceFound": "خدمة الإشعارات الاحتياطية: {service}.",
-  "settings.reminders.serviceMissing": "لم يعثر على خدمة إشعارات في النظام. يستخدم Breathe نافذته المنبثقة الخاصة، فستظهر التذكيرات على أي حال.",
   "settings.appearance.title": "المظهر",
   "settings.appearance.description": "يتبع Breathe مظهر سطح المكتب افتراضيا.",
   "settings.appearance.themeAria": "السمة",

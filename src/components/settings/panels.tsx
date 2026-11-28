@@ -8,7 +8,6 @@ import {
   SNOOZE_MINUTES,
   type AppInfo,
   type AutostartStatus,
-  type NotificationStatus,
   type Settings,
   type SettingsPatch,
   type Snapshot,
@@ -48,7 +47,6 @@ export interface PanelProps {
   testResult: TestNotificationResult | null;
   onTest: () => void;
   onSnooze: () => void;
-  notificationStatus: NotificationStatus | null;
   autostartStatus: AutostartStatus | null;
   autostartBusy: boolean;
   onToggleAutostart: (enabled: boolean) => void;
@@ -162,7 +160,6 @@ export function RemindersPanel({
   testResult,
   onTest,
   onSnooze,
-  notificationStatus,
 }: PanelProps) {
   const t = useT();
   const bothEnabled = settings.eyesEnabled && settings.movementEnabled;
@@ -270,24 +267,6 @@ export function RemindersPanel({
               ? t("settings.reminders.testShown")
               : t("settings.reminders.testFailed", { error: testResult.error ?? "" })}
           </Note>
-        ) : null}
-
-        {notificationStatus ? (
-          notificationStatus.available ? (
-            <Note tone="success">
-              {t("settings.reminders.serviceFound", {
-                service: [
-                  notificationStatus.service,
-                  notificationStatus.version,
-                  notificationStatus.vendor ? `(${notificationStatus.vendor})` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" "),
-              })}
-            </Note>
-          ) : (
-            <Note>{t("settings.reminders.serviceMissing")}</Note>
-          )
         ) : null}
       </div>
     </>

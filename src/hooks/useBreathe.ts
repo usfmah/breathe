@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getAppInfo,
   getAutostartStatus,
-  getNotificationStatus,
   getSettings,
   getSnapshot,
   hideWindow,
@@ -24,7 +23,6 @@ import { applyTheme, resolveTheme, systemPrefersDark, watchSystemTheme } from "@
 import type {
   AppInfo,
   AutostartStatus,
-  NotificationStatus,
   Settings,
   SettingsPatch,
   Snapshot,
@@ -37,7 +35,6 @@ export interface BreatheController {
   ready: boolean;
   settings: Settings | null;
   snapshot: Snapshot | null;
-  notificationStatus: NotificationStatus | null;
   autostartStatus: AutostartStatus | null;
   appInfo: AppInfo | null;
   autostartBusy: boolean;
@@ -71,8 +68,6 @@ export function useBreathe(): BreatheController {
   const [windowLabel, setWindowLabel] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [notificationStatus, setNotificationStatus] =
-    useState<NotificationStatus | null>(null);
   const [autostartStatus, setAutostartStatus] = useState<AutostartStatus | null>(
     null,
   );
@@ -131,13 +126,11 @@ export function useBreathe(): BreatheController {
 
     void (async () => {
       try {
-        const [notifications, autostart, info] = await Promise.all([
-          getNotificationStatus(),
+        const [autostart, info] = await Promise.all([
           getAutostartStatus(),
           getAppInfo(),
         ]);
         if (!mounted.current) return;
-        setNotificationStatus(notifications);
         setAutostartStatus(autostart);
         setAppInfo(info);
       } catch (error) {
@@ -318,7 +311,6 @@ export function useBreathe(): BreatheController {
       ready: settings !== null && snapshot !== null && windowLabel !== null,
       settings,
       snapshot,
-      notificationStatus,
       autostartStatus,
       appInfo,
       autostartBusy,
@@ -342,7 +334,6 @@ export function useBreathe(): BreatheController {
       windowLabel,
       settings,
       snapshot,
-      notificationStatus,
       autostartStatus,
       appInfo,
       autostartBusy,

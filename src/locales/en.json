@@ -99,8 +99,6 @@
   "settings.reminders.testNote": "The test shows the popup for the next reminder category, through the same path as real reminders. Snoozing schedules a single reminder {count} minutes from now.",
   "settings.reminders.testShown": "A test reminder was shown.",
   "settings.reminders.testFailed": "Could not show the test reminder. {error}",
-  "settings.reminders.serviceFound": "Fallback notification service: {service}.",
-  "settings.reminders.serviceMissing": "No system notification service was found. Breathe uses its own popup, so reminders still appear.",
   "settings.appearance.title": "Appearance",
   "settings.appearance.description": "Breathe follows your desktop by default.",
   "settings.appearance.themeAria": "Theme",
