@@ -49,14 +49,16 @@ function props(overrides: Partial<PanelProps> = {}): PanelProps {
 describe("<RemindersPanel /> reminder style", () => {
   it("offers the popup and system notifications, defaulting to the popup", () => {
     render(<RemindersPanel {...props()} />);
-    const select = screen.getByRole("combobox", { name: "Reminder style" }) as HTMLSelectElement;
+    const select = screen.getByRole<HTMLSelectElement>("combobox", {
+      name: "Reminder style",
+    });
     expect(select.value).toBe("popup");
-    expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
-      "Breathe popup",
-      "System notifications",
-    ]);
     expect(
-      (screen.getByRole("switch", { name: "Play a sound" }) as HTMLButtonElement).disabled,
+      Array.from(select.options).map((option) => option.textContent),
+    ).toEqual(["Breathe popup", "System notifications"]);
+    expect(
+      screen.getByRole<HTMLButtonElement>("switch", { name: "Play a sound" })
+        .disabled,
     ).toBe(false);
   });
 
@@ -76,8 +78,11 @@ describe("<RemindersPanel /> reminder style", () => {
       />,
     );
     expect(
-      (screen.getByRole("switch", { name: "Play a sound" }) as HTMLButtonElement).disabled,
+      screen.getByRole<HTMLButtonElement>("switch", { name: "Play a sound" })
+        .disabled,
     ).toBe(true);
-    expect(screen.getByText(/Take a break or snooze from the tray/)).toBeTruthy();
+    expect(
+      screen.getByText(/Take a break or snooze from the tray/),
+    ).toBeTruthy();
   });
 });
